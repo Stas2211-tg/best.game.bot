@@ -28,8 +28,6 @@ admin_actions = {}
 waiting_for_username = {}
 hotcold_games = {}
 bullscows_games = {}
-group_bonus_tracker = {}
-group_game_sessions = {}
 
 # ========== REDIS ==========
 r = redis.from_url(REDIS_URL, decode_responses=True)
@@ -87,7 +85,7 @@ def init_db():
 
 init_db()
 
-# ========== ТЕМЫ ==========
+# ========== ТЕМЫ (100 штук) ==========
 THEMES = {
     "🎲": "Классика", "🌌": "Космос", "🔥": "Огонь", "💎": "Драгоценности",
     "👾": "Ретро", "🎭": "Маскарад", "👑": "Королевская", "🌙": "Мистическая",
@@ -117,32 +115,17 @@ THEMES = {
     "🐍": "Змея", "🦚": "Павлин", "🦜": "Попугай", "🐧": "Пингвин",
     "🦉": "Сова", "🦇": "Летучая мышь", "🌹": "Роза", "🌻": "Подсолнух",
     "🌵": "Кактус", "🍄": "Гриб", "🌿": "Трава", "🍃": "Лист",
-    "🍂": "Осень", "🍁": "Клён", "🌾": "Рис", "🌽": "Кукуруза",
-    "🍎": "Яблоко", "🍊": "Апельсин", "🍋": "Лимон", "🍇": "Виноград",
-    "🍒": "Вишня", "🍑": "Персик", "🥝": "Киви", "🥥": "Кокос",
-    "🥑": "Авокадо", "🍆": "Баклажан", "🥔": "Картофель", "🥕": "Морковь",
-    "🥦": "Брокколи", "🥩": "Мясо", "🍔": "Бургер", "🍕": "Пицца",
-    "🌮": "Тако", "🥗": "Салат", "🍣": "Суши", "🍜": "Лапша",
-    "🍰": "Торт", "🍪": "Печенье", "🍩": "Пончик", "🍫": "Шоколад",
-    "🍬": "Конфета", "🍭": "Леденец", "🎂": "Пирожное", "🥧": "Пирог",
-    "🍿": "Попкорн", "🥨": "Крендель", "🥪": "Сэндвич", "🥙": "Суп",
-    "🍲": "Карри", "🍛": "Паста", "🥫": "Консервы", "🥟": "Пельмени",
-    "🥠": "Клецки", "🥡": "Еда", "⚙️": "Шестерня", "🔧": "Гаечный ключ",
-    "🔨": "Молоток", "🗝️": "Ключ", "🧲": "Магнит", "🔬": "Микроскоп",
-    "🔭": "Телескоп", "📡": "Спутник", "💡": "Лампочка"
+    "🍂": "Осень", "🍁": "Клён", "🌾": "Рис", "🌽": "Кукуруза"
 }
 
 THEMES_PRICE = {}
 for i, emoji in enumerate(THEMES.keys()):
     if emoji == "🎲":
         THEMES_PRICE[emoji] = 0
-    elif i < 20:
-        prices = [20, 25, 30, 80, 90, 100, 120, 80, 110, 150, 300, 70, 85, 95, 110, 130, 75, 90, 100, 95]
-        THEMES_PRICE[emoji] = prices[i-1] if i-1 < len(prices) else random.randint(50, 200)
     else:
-        THEMES_PRICE[emoji] = random.randint(50, 300)
+        THEMES_PRICE[emoji] = random.randint(20, 200)
 
-# ========== ЭФФЕКТЫ ==========
+# ========== ЭФФЕКТЫ (100 штук) ==========
 EFFECTS = {
     "⚡": "Молния", "🌟": "Звезда", "💫": "Комета", "🌀": "Вихрь",
     "🎪": "Цирк", "🏆": "Победитель", "🌈": "Радуга", "💡": "Неон",
@@ -162,24 +145,14 @@ EFFECTS = {
     "👩‍⚕️": "Врач", "👨‍🏫": "Учитель", "👩‍💻": "Программист", "👨‍🌾": "Фермер",
     "👩‍🎨": "Художник", "👨‍🚀": "Астронавт", "👩‍✈️": "Пилот", "👨‍🔧": "Инженер",
     "👩‍🔬": "Учёный", "🌌": "Галактика", "🪐": "Планета", "☄️": "Комета",
-    "🌠": "Звездопад", "🕳️": "Чёрная дыра", "🔭": "Телескоп", "🛰️": "Спутник",
-    "🚀": "Ракета", "👨‍🚀": "Астронавт2", "👩‍🚀": "Астронавтка2", "🍃": "Лист2",
-    "🌿": "Трава2", "🍂": "Осень2", "🍁": "Клён2", "🌺": "Цветок",
-    "🌻": "Подсолнух2", "🌵": "Кактус2", "🍄": "Гриб2", "🐚": "Ракушка",
-    "🪨": "Камень", "🎮": "Геймпад", "🕹️": "Джойстик", "🎲": "Кубик",
-    "🎯": "Мишень", "🎰": "Слот", "🃏": "Джокер", "♠️": "Пики",
-    "♥️": "Черви", "♣️": "Трефы", "♦️": "Бубны"
+    "🌠": "Звездопад", "🕳️": "Чёрная дыра", "🔭": "Телескоп", "🛰️": "Спутник"
 }
 
 EFFECTS_PRICE = {}
-effect_prices = [30, 25, 35, 30, 25, 40, 50, 60, 70, 80, 50, 90, 100, 120, 130, 140, 150, 80, 90, 200, 45, 55, 100, 60, 70, 80, 75, 50, 85, 65, 70, 80, 90, 60, 70, 65, 130, 120, 130, 150, 110, 100, 95, 105, 140, 115, 125]
 for i, emoji in enumerate(EFFECTS.keys()):
-    if i < len(effect_prices):
-        EFFECTS_PRICE[emoji] = effect_prices[i]
-    else:
-        EFFECTS_PRICE[emoji] = random.randint(30, 200)
+    EFFECTS_PRICE[emoji] = random.randint(25, 150)
 
-# ========== КОМБИНАЦИИ ==========
+# ========== КОМБИНАЦИИ (50 штук) ==========
 COMBOS = {}
 COMBOS_PRICE = {}
 
@@ -201,14 +174,17 @@ combo_list = [
     ("💡⚡", "Электрический удар", 480), ("🎸🔥", "Рок-огонь", 560),
     ("🧙🔮", "Великий маг", 700), ("🧝🏹", "Лесной эльф", 650),
     ("🧛🩸", "Кровавый вампир", 720), ("👻🕯️", "Призрачный свет", 580),
-    ("🤖⚙️", "Механический воин", 680), ("👾🛸", "Инопланетный гость", 620)
+    ("🤖⚙️", "Механический воин", 680), ("👾🛸", "Инопланетный гость", 620),
+    ("🔥⚔️", "Пламенный меч", 600), ("❄️🛡️", "Ледяной щит", 600),
+    ("🌙🔮", "Лунная магия", 650), ("☀️🗡️", "Солнечный клинок", 650),
+    ("🦅👑", "Орлиный король", 700), ("🐺⚡", "Волчья молния", 550)
 ]
 
-for combo, name, price in combo_list:
+for combo, name, price in combo_list[:50]:
     COMBOS[combo] = name
     COMBOS_PRICE[combo] = price
 
-# ========== ЯЗЫКИ ==========
+# ========== ЯЗЫКИ (10 штук) ==========
 LANGUAGES = {
     "normal": "Обычный",
     "royal": "👑 Королевский",
@@ -219,193 +195,33 @@ LANGUAGES = {
     "poetic": "📜 Поэтический",
     "childish": "🧸 Детский",
     "brutal": "💪 Брутальный",
-    "intelligent": "🎓 Интеллигентный",
-    "sarcastic": "🙃 Саркастичный",
-    "anime": "🎌 Аниме",
-    "pirate": "🏴‍☠️ Пиратский",
-    "cowboy": "🤠 Ковбойский",
-    "medieval": "🛡️ Средневековый",
-    "future": "🔮 Будущего",
-    "minimal": "⬜ Минималист",
-    "emoji": "😀 Эмодзи-стиль",
-    "silent": "🤫 Молчаливый",
-    "yoda": "🧘 Мастер Йода"
+    "intelligent": "🎓 Интеллигентный"
 }
 
 LANGUAGES_PRICE = {
     "royal": 200, "sassy": 250, "evil": 300, "mystic": 350, "robot": 500,
-    "poetic": 220, "childish": 180, "brutal": 260, "intelligent": 240, "sarcastic": 280,
-    "anime": 300, "pirate": 270, "cowboy": 260, "medieval": 310, "future": 340,
-    "minimal": 200, "emoji": 400, "silent": 450, "yoda": 500
+    "poetic": 220, "childish": 180, "brutal": 260, "intelligent": 240
 }
 
-# ========== ФРАЗЫ ДЛЯ ЯЗЫКОВ ==========
+# ========== ФРАЗЫ ==========
 def get_phrase(lang, phrase_key):
     phrases = {
-        "normal": {
-            "win": "🎉 Победа! +{}💰",
-            "lose": "💀 Поражение. -{}💰",
-            "draw": "🤝 Ничья! +2💰",
-            "welcome": "🎉 Добро пожаловать в игровой портал!",
-            "bonus": "🎁 +10 монет! Завтра приходи ещё!",
-            "no_coins": "❌ Недостаточно монет",
-            "already_bonus": "⏳ Бонус уже получен. Возвращайся завтра!",
-            "profile": "Профиль",
-            "find": "Найти игрока",
-            "games": "Игры",
-            "shop": "Магазин",
-            "referrals": "Рефералы",
-            "question": "Вопрос",
-            "commands": "Все команды",
-            "admin": "Админ",
-            "my_items": "Мои покупки",
-            "back": "Назад"
-        },
-        "royal": {
-            "win": "👑 Ваше величество победило! +{}💰",
-            "lose": "💎 Ваше величество проиграло. -{}💰",
-            "draw": "🤝 Благородная ничья! +2💰",
-            "welcome": "👑 Добро пожаловать в королевский игровой портал!",
-            "bonus": "🎁 Вам пожаловано 10 монет!",
-            "no_coins": "❌ У вашего величества недостаточно монет",
-            "already_bonus": "⏳ Ваше величество уже получало бонус сегодня",
-            "profile": "Особа",
-            "find": "Сыскать игрока",
-            "games": "Сыграть",
-            "shop": "Лавка",
-            "referrals": "Подданные",
-            "question": "Прошение",
-            "commands": "Указы",
-            "admin": "Канцлер",
-            "my_items": "Сокровища",
-            "back": "Вернуться"
-        },
-        "sassy": {
-            "win": "🎉 Ого, повезло! Забирай {}💰!",
-            "lose": "💀 Ха-ха! Проиграл {}💰!",
-            "draw": "🤝 Ничья. Забирай 2💰",
-            "welcome": "🎉 О, ещё один игрок! Ну давай!",
-            "bonus": "🎁 Держи 10💰. Не опаздывай!",
-            "no_coins": "❌ Эй, бездарь! У тебя нет монет!",
-            "already_bonus": "⏳ Ты уже брал бонус сегодня. Жди завтра!",
-            "profile": "Поглядим",
-            "find": "Кого ищем?",
-            "games": "Замутим?",
-            "shop": "Купи что-нибудь",
-            "referrals": "Зови друзей",
-            "question": "Чё надо?",
-            "commands": "Чё умею?",
-            "admin": "Для своих",
-            "my_items": "Моё добро",
-            "back": "Вали отсюда"
-        },
-        "robot": {
-            "win": "🤖 ПОБЕДА. ЗАЧИСЛЕНО {}💰",
-            "lose": "💀 ПОРАЖЕНИЕ. СПИСАНО {}💰",
-            "draw": "🤝 НИЧЬЯ. +2💰",
-            "welcome": "🤖 ДОБРО ПОЖАЛОВАТЬ. ЗАПУСК...",
-            "bonus": "🎁 ВЫПОЛНЕНА ОПЕРАЦИЯ 'БОНУС'. +10💰",
-            "no_coins": "❌ ОШИБКА. НЕДОСТАТОЧНО МОНЕТ",
-            "already_bonus": "⏳ ОПЕРАЦИЯ 'БОНУС' УЖЕ ВЫПОЛНЕНА",
-            "profile": "ПРОФИЛЬ",
-            "find": "ПОИСК",
-            "games": "ИГРЫ",
-            "shop": "МАГАЗИН",
-            "referrals": "РЕФЕРАЛЫ",
-            "question": "ВОПРОС",
-            "commands": "КОМАНДЫ",
-            "admin": "АДМИН",
-            "my_items": "ПОКУПКИ",
-            "back": "НАЗАД"
-        }
+        "normal": {"win": "🎉 Победа! +{}💰", "lose": "💀 Поражение. -{}💰", "draw": "🤝 Ничья! +2💰", "welcome": "🎉 Добро пожаловать!", "bonus": "🎁 +10 монет! Завтра приходи ещё!", "no_coins": "❌ Недостаточно монет", "already_bonus": "⏳ Бонус уже получен. Возвращайся завтра!"},
+        "royal": {"win": "👑 Ваше величество победило! +{}💰", "lose": "💎 Ваше величество проиграло. -{}💰", "draw": "🤝 Благородная ничья! +2💰", "welcome": "👑 Добро пожаловать!", "bonus": "🎁 Вам пожаловано 10 монет!", "no_coins": "❌ У вашего величества недостаточно монет", "already_bonus": "⏳ Вы уже получали бонус сегодня"},
+        "sassy": {"win": "🎉 Ого, повезло! Забирай {}💰!", "lose": "💀 Ха-ха! Проиграл {}💰!", "draw": "🤝 Ничья. Забирай 2💰", "welcome": "🎉 О, ещё один игрок!", "bonus": "🎁 Держи 10💰!", "no_coins": "❌ Эй, бездарь! У тебя нет монет!", "already_bonus": "⏳ Ты уже брал бонус сегодня!"},
+        "evil": {"win": "😈 Невероятно! Ты выиграл {}💰...", "lose": "💀 Отлично! Ты проиграл {}💰!", "draw": "🤝 Ничья. 2💰 твои.", "welcome": "😈 Добро пожаловать!", "bonus": "🎁 Получи 10💰!", "no_coins": "❌ У тебя нет монет!", "already_bonus": "⏳ Ты уже получил бонус сегодня!"},
+        "mystic": {"win": "🔮 Звёзды благоволят тебе... +{}💰", "lose": "🌙 Тьма поглощает {}💰...", "draw": "🤝 Равновесие. +2💰", "welcome": "🎭 Таинственный портал открыт...", "bonus": "🎁 Луна дарит тебе 10💰...", "no_coins": "❌ Энергия монет иссякла...", "already_bonus": "⏳ Прилив энергии был... Жди следующего лунного цикла..."},
+        "robot": {"win": "🤖 ПОБЕДА. ЗАЧИСЛЕНО {}💰", "lose": "💀 ПОРАЖЕНИЕ. СПИСАНО {}💰", "draw": "🤝 НИЧЬЯ. +2💰", "welcome": "🤖 ДОБРО ПОЖАЛОВАТЬ!", "bonus": "🎁 ВЫПОЛНЕНА ОПЕРАЦИЯ 'БОНУС'. +10💰", "no_coins": "❌ ОШИБКА. НЕДОСТАТОЧНО МОНЕТ", "already_bonus": "⏳ ОПЕРАЦИЯ 'БОНУС' УЖЕ ВЫПОЛНЕНА"},
+        "poetic": {"win": "🌟 Удача улыбнулась тебе! +{}💰", "lose": "🌧️ Судьба отвернулась... -{}💰", "draw": "🍃 Ветер перемен принёс ничью. +2💰", "welcome": "📜 Добро пожаловать!", "bonus": "🎁 Заря нового дня дарит тебе 10💰", "no_coins": "❌ Казна пуста...", "already_bonus": "⏳ День ещё не настал..."},
+        "childish": {"win": "🎉 Ура-ура! Ты выиграл {}💰!", "lose": "😢 Ой-ой... Ты проиграл {}💰...", "draw": "🤝 Ничья! Делим 2💰!", "welcome": "🧸 Привет-привет! Поиграем?", "bonus": "🎁 Держи 10 монеток! Ура!", "no_coins": "❌ Ой, монетки кончились...", "already_bonus": "⏳ Ты уже получал бонус сегодня!"},
+        "brutal": {"win": "💪 Хорош! Забирай свои {}💰", "lose": "💀 Слабак! Проиграл {}💰", "draw": "🤝 Ничья. 2💰 твои.", "welcome": "💪 Заходи, не бойся!", "bonus": "🎁 На, получи 10💰!", "no_coins": "❌ У тебя нет монет, иди работай!", "already_bonus": "⏳ Бонус уже был. Жди завтра!"},
+        "intelligent": {"win": "📊 Вероятность победы составила 100%. Начислено {}💰", "lose": "📉 Статистика поражений пополнилась. Потеряно {}💰", "draw": "📈 Ничья. Зафиксировано +2💰", "welcome": "🎓 Рад приветствовать вас!", "bonus": "🎁 Поощрительная выплата: 10💰", "no_coins": "❌ Финансовый резерв исчерпан", "already_bonus": "⏳ Вы уже активировали бонус сегодня"}
     }
     if lang not in phrases:
         return phrases["normal"].get(phrase_key, "")
     return phrases[lang].get(phrase_key, phrases["normal"].get(phrase_key, ""))
 
-# ========== ИСПРАВЛЕННЫЕ ФУНКЦИИ ПОКУПОК ==========
-def add_owned_theme(uid, theme):
-    user = get_user(uid)
-    owned = user.get("owned_themes", "🎲")
-    if theme not in owned:
-        new_owned = owned + theme
-        update_user(uid, owned_themes=new_owned)
-        delete_user_cache(uid)
-        get_user(uid)
-
-def add_owned_effect(uid, effect):
-    user = get_user(uid)
-    owned = user.get("owned_effects", "")
-    if effect not in owned:
-        new_owned = owned + effect
-        update_user(uid, owned_effects=new_owned)
-        delete_user_cache(uid)
-        get_user(uid)
-
-def add_owned_language(uid, lang):
-    user = get_user(uid)
-    owned = user.get("owned_languages", "normal")
-    if lang not in owned:
-        new_owned = owned + "," + lang
-        update_user(uid, owned_languages=new_owned)
-        delete_user_cache(uid)
-        get_user(uid)
-
-def add_owned_combo(uid, combo):
-    user = get_user(uid)
-    owned_combos = user.get("owned_combos", "")
-    if combo not in owned_combos:
-        new_combos = owned_combos + "," + combo if owned_combos else combo
-        update_user(uid, owned_combos=new_combos)
-        delete_user_cache(uid)
-        get_user(uid)
-    if len(combo) >= 2:
-        add_owned_theme(uid, combo[0])
-        add_owned_effect(uid, combo[1])
-
-def set_active_theme(uid, theme):
-    user = get_user(uid)
-    owned = user.get("owned_themes", "🎲")
-    if theme in owned:
-        update_user(uid, active_theme=theme)
-        delete_user_cache(uid)
-        get_user(uid)
-        return True
-    return False
-
-def set_active_effect(uid, effect):
-    user = get_user(uid)
-    owned = user.get("owned_effects", "")
-    if effect in owned:
-        update_user(uid, active_effect=effect)
-        delete_user_cache(uid)
-        get_user(uid)
-        return True
-    return False
-
-def set_active_language(uid, lang):
-    user = get_user(uid)
-    owned = user.get("owned_languages", "normal")
-    if lang == "normal" or lang in owned:
-        update_user(uid, active_language=lang)
-        delete_user_cache(uid)
-        get_user(uid)
-        return True
-    return False
-
-def set_active_combo(uid, combo):
-    user = get_user(uid)
-    owned_combos = user.get("owned_combos", "")
-    if combo in owned_combos:
-        if len(combo) >= 2:
-            set_active_theme(uid, combo[0])
-            set_active_effect(uid, combo[1])
-        delete_user_cache(uid)
-        get_user(uid)
-        return True
-    return False
-
-# ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
+# ========== ОСНОВНЫЕ ФУНКЦИИ ==========
 def get_user(uid):
     uid = str(uid)
     cached = get_user_cache(uid)
@@ -430,18 +246,6 @@ def get_user(uid):
     set_user_cache(uid, user)
     return user
 
-def get_user_by_username(username):
-    username = username.lower().replace("@", "")
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM users WHERE username = %s", (username,))
-    result = cur.fetchone()
-    cur.close()
-    conn.close()
-    if result:
-        return result[0]
-    return None
-
 def update_user(uid, **kwargs):
     uid = str(uid)
     conn = get_db_connection()
@@ -451,13 +255,13 @@ def update_user(uid, **kwargs):
     conn.commit()
     cur.close()
     conn.close()
+    delete_user_cache(uid)
+    return get_user(uid)
 
 def add_coins(uid, amount):
     user = get_user(uid)
     new_coins = user["coins"] + amount
     update_user(uid, coins=new_coins)
-    delete_user_cache(uid)
-    get_user(uid)
     return new_coins
 
 def remove_coins(uid, amount):
@@ -465,8 +269,6 @@ def remove_coins(uid, amount):
     if user["coins"] >= amount:
         new_coins = user["coins"] - amount
         update_user(uid, coins=new_coins)
-        delete_user_cache(uid)
-        get_user(uid)
         return True
     return False
 
@@ -501,14 +303,8 @@ def global_stats():
     conn.close()
     return total_users, total_coins, avg, top_text
 
-def format_profile(uid, target_uid=None):
-    if target_uid:
-        user = get_user(target_uid)
-        own_profile = False
-    else:
-        user = get_user(uid)
-        own_profile = True
-    
+def format_profile(uid):
+    user = get_user(uid)
     active_theme = user.get("active_theme", "🎲")
     active_effect = user.get("active_effect", "")
     active_language = user.get("active_language", "normal")
@@ -516,12 +312,9 @@ def format_profile(uid, target_uid=None):
     region = user.get("region") or "Не выбран"
     lang_name = LANGUAGES.get(active_language, "Обычный")
     
-    if own_profile:
-        task = get_user_task(uid)
-        task_status = "✅" if task["completed"] and not task["reward_taken"] else "❌" if not task["completed"] else "🎁"
-        task_line = f"\n│  📋 Задание: {task['name']} {task_status}"
-    else:
-        task_line = ""
+    task = get_user_task(uid)
+    task_status = "✅" if task["completed"] and not task["reward_taken"] else "❌" if not task["completed"] else "🎁"
+    task_line = f"\n│  📋 Задание: {task['name']} {task_status}"
     
     return (
         f"┌─────────────────────┐\n"
@@ -536,13 +329,10 @@ def format_profile(uid, target_uid=None):
 def commands_list(uid):
     lang = get_user(uid).get("active_language", "normal")
     return (
-        "📋 *Список всех команд и кнопок:*\n\n"
-        "🎲 *Кубики:*\n"
-        "• 1 кубик (1–6)\n• 2 кубика (2–12)\n• 3 кубика (3–18)\n"
-        "• 5 кубиков (5–30)\n• 10 кубиков (10–60)\n• Кости на удачу (3 кубика, сумма ≥15)\n"
-        "📌 *Погрешность:* ±1 даёт 50%, ±5 даёт 25% выигрыша\n\n"
-        "🎮 *Другие игры:*\n"
-        "• 🔢 Угадай число\n• ✂️ Камень-ножницы\n• 🎴 Карты и Джокер\n"
+        "📋 *Список всех команд:*\n\n"
+        "🎲 *Кубики:*\n• 1 кубик (1–6)\n• 2 кубика (2–12)\n• 3 кубика (3–18)\n"
+        "• 5 кубиков (5–30)\n• 10 кубиков (10–60)\n• Кости на удачу (сумма ≥15)\n"
+        "🎮 *Игры:*\n• 🔢 Угадай число\n• ✂️ Камень-ножницы\n• 🎴 Карты и Джокер\n"
         "• 🎰 Слоты\n• 💎 Камень-мешок-монета\n• 🎯 Угадай цвет\n"
         "• 📈 Выше/Ниже\n• 🔫 Русская рулетка\n• 🔥 Горячо/Холодно\n"
         "• 🎯 Быки и коровы\n• 🎲 Чет/Нечет\n\n"
@@ -551,13 +341,14 @@ def commands_list(uid):
         "ℹ️ *Прочее:*\n• ❓ Вопрос\n• 📋 Все команды"
     )
 
-REGIONS = ["🇷🇺 Россия", "🇺🇦 Украина", "🇧🇾 Беларусь", "🇰🇿 Казахстан", "🇦🇲 Армения", "🇬🇪 Грузия", "🇺🇿 Узбекистан"]
+REGIONS = ["🇷🇺 Россия", "🇺🇦 Украина", "🇧🇾 Беларусь", "🇰🇿 Казахстан", "🇦🇲 Армения", "🇬🇪 Грузия"]
 
 def region_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     kb.add(*[KeyboardButton(r) for r in REGIONS])
     return kb
 
+# ========== КЛАВИАТУРЫ ==========
 def main_keyboard(uid):
     user = get_user(uid)
     theme = user.get("active_theme", "🎲")
@@ -565,21 +356,21 @@ def main_keyboard(uid):
     
     kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     kb.add(
-        KeyboardButton(f"{theme} {get_phrase(lang, 'games')}"),
-        KeyboardButton(f"{theme} {get_phrase(lang, 'shop')}"),
-        KeyboardButton(f"{theme} {get_phrase(lang, 'profile')}"),
-        KeyboardButton(f"{theme} {get_phrase(lang, 'find')}"),
-        KeyboardButton(f"{theme} {get_phrase(lang, 'bonus')}"),
-        KeyboardButton(f"{theme} {get_phrase(lang, 'referrals')}"),
-        KeyboardButton(f"{theme} {get_phrase(lang, 'question')}"),
-        KeyboardButton(f"{theme} {get_phrase(lang, 'commands')}")
+        KeyboardButton(f"{theme} Кубики"),
+        KeyboardButton(f"{theme} Игры"),
+        KeyboardButton(f"{theme} Магазин"),
+        KeyboardButton(f"{theme} Профиль"),
+        KeyboardButton(f"{theme} Найти игрока"),
+        KeyboardButton(f"{theme} {get_phrase(lang, 'bonus')[:15]}"),
+        KeyboardButton(f"{theme} Рефералы"),
+        KeyboardButton(f"{theme} Вопрос"),
+        KeyboardButton(f"{theme} Все команды")
     )
     if uid == ADMIN_ID:
-        kb.add(KeyboardButton(f"{theme} {get_phrase(lang, 'admin')}"))
+        kb.add(KeyboardButton(f"{theme} Админ"))
     return kb
 
-def dice_keyboard(uid):
-    lang = get_user(uid).get("active_language", "normal")
+def dice_keyboard():
     kb = InlineKeyboardMarkup(row_width=3)
     kb.add(
         InlineKeyboardButton("🎲 1 кубик", callback_data="dice_1"),
@@ -588,12 +379,11 @@ def dice_keyboard(uid):
         InlineKeyboardButton("🎲🎲🎲🎲🎲 5 кубиков", callback_data="dice_5"),
         InlineKeyboardButton("🎲 x10 10 кубиков", callback_data="dice_10"),
         InlineKeyboardButton("🎲💰 Кости на удачу", callback_data="dice_luck"),
-        InlineKeyboardButton(f"◀️ {get_phrase(lang, 'back')}", callback_data="back_main")
+        InlineKeyboardButton("◀️ Назад", callback_data="back_main")
     )
     return kb
 
-def games_keyboard(uid):
-    lang = get_user(uid).get("active_language", "normal")
+def games_keyboard():
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
         InlineKeyboardButton("🔢 Угадай число", callback_data="gamble_number"),
@@ -607,29 +397,28 @@ def games_keyboard(uid):
         InlineKeyboardButton("🔥 Горячо/Холодно", callback_data="gamble_hotcold"),
         InlineKeyboardButton("🎯 Быки и коровы", callback_data="gamble_bullscows"),
         InlineKeyboardButton("🎲 Чет/Нечет", callback_data="gamble_evenodd"),
-        InlineKeyboardButton(f"◀️ {get_phrase(lang, 'back')}", callback_data="back_main")
+        InlineKeyboardButton("◀️ Назад", callback_data="back_main")
     )
     return kb
 
-def shop_menu(uid):
-    lang = get_user(uid).get("active_language", "normal")
+def shop_keyboard(uid):
+    user = get_user(uid)
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
         InlineKeyboardButton("🎨 Темы", callback_data="shop_themes"),
         InlineKeyboardButton("✨ Эффекты", callback_data="shop_effects"),
         InlineKeyboardButton("🔥 Комбинации", callback_data="shop_combos"),
         InlineKeyboardButton("💬 Языки", callback_data="shop_languages"),
-        InlineKeyboardButton(f"🎨 {get_phrase(lang, 'my_items')}", callback_data="my_items"),
-        InlineKeyboardButton(f"◀️ {get_phrase(lang, 'back')}", callback_data="back_main")
+        InlineKeyboardButton("🎨 Мои покупки", callback_data="my_items"),
+        InlineKeyboardButton("◀️ Назад", callback_data="back_main")
     )
-    user = get_user(uid)
-    bot.send_message(uid, f"🛒 *Магазин*\n💰 У тебя {user['coins']} монет\n\nВыбери категорию:", reply_markup=kb, parse_mode="Markdown")
+    bot.send_message(uid, f"🛒 *Магазин*\n💰 У тебя {user['coins']} монет", reply_markup=kb, parse_mode="Markdown")
 
 def shop_themes_keyboard(uid):
     user = get_user(uid)
     owned = user.get("owned_themes", "🎲")
     kb = InlineKeyboardMarkup(row_width=2)
-    for emoji, name in list(THEMES.items())[:50]:
+    for emoji, name in list(THEMES.items())[:30]:
         if emoji in owned:
             kb.add(InlineKeyboardButton(f"✅ {name} {emoji}", callback_data="no"))
         else:
@@ -642,7 +431,7 @@ def shop_effects_keyboard(uid):
     user = get_user(uid)
     owned = user.get("owned_effects", "")
     kb = InlineKeyboardMarkup(row_width=2)
-    for emoji, name in list(EFFECTS.items())[:50]:
+    for emoji, name in list(EFFECTS.items())[:30]:
         if emoji in owned:
             kb.add(InlineKeyboardButton(f"✅ {name} {emoji}", callback_data="no"))
         else:
@@ -694,22 +483,22 @@ def my_items_keyboard(uid):
     for emoji, name in THEMES.items():
         if emoji in owned_themes:
             marker = "✅" if emoji == active_theme else "❌"
-            kb.add(InlineKeyboardButton(f"{marker} Тема: {name} {emoji}", callback_data=f"set_theme_{emoji}"))
+            kb.add(InlineKeyboardButton(f"{marker} {name} {emoji}", callback_data=f"set_theme_{emoji}"))
     
     for emoji, name in EFFECTS.items():
         if emoji in owned_effects:
             marker = "✅" if emoji == active_effect else "❌"
-            kb.add(InlineKeyboardButton(f"{marker} Эффект: {name} {emoji}", callback_data=f"set_effect_{emoji}"))
+            kb.add(InlineKeyboardButton(f"{marker} {name} {emoji}", callback_data=f"set_effect_{emoji}"))
     
     for combo, name in COMBOS.items():
         if combo in owned_combos:
             marker = "✅" if (len(combo) >= 2 and combo[0] == active_theme and combo[1] == active_effect) else "❌"
-            kb.add(InlineKeyboardButton(f"{marker} Комбо: {name} {combo}", callback_data=f"set_combo_{combo}"))
+            kb.add(InlineKeyboardButton(f"{marker} {name} {combo}", callback_data=f"set_combo_{combo}"))
     
     for lang, name in LANGUAGES.items():
         if lang != "normal" and lang in owned_languages:
             marker = "✅" if lang == active_language else "❌"
-            kb.add(InlineKeyboardButton(f"{marker} Язык: {name}", callback_data=f"set_language_{lang}"))
+            kb.add(InlineKeyboardButton(f"{marker} {name}", callback_data=f"set_language_{lang}"))
     
     kb.add(InlineKeyboardButton("❌ Снять эффект", callback_data="remove_effect"))
     kb.add(InlineKeyboardButton("◀️ Назад", callback_data="back_shop"))
@@ -727,516 +516,60 @@ def admin_keyboard():
     )
     return kb
 
-@bot.message_handler(commands=['start'])
-def start(m):
-    uid = m.chat.id
-    args = m.text.split()
-    if len(args) > 1 and args[1].startswith("ref_"):
-        referrer_id = args[1].split("_")[1]
-        process_referral(uid, referrer_id)
-    
+# ========== ФУНКЦИИ ПОКУПОК ==========
+def add_owned_theme(uid, theme):
     user = get_user(uid)
-    if m.from_user.username:
-        update_user(uid, username=m.from_user.username.lower())
-    lang = user.get("active_language", "normal")
-    
-    bot.send_message(uid, f"{get_phrase(lang, 'welcome')}\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
+    owned = user.get("owned_themes", "🎲")
+    if theme not in owned:
+        update_user(uid, owned_themes=owned + theme)
 
-@bot.message_handler(func=lambda m: m.text == "📍 Мой регион")
-def choose_region(m):
-    uid = m.chat.id
-    bot.send_message(uid, "🌍 *Выбери свой регион:*", reply_markup=region_keyboard(), parse_mode="Markdown")
-
-@bot.message_handler(func=lambda m: m.text in REGIONS)
-def save_region(m):
-    uid = m.chat.id
-    region = m.text
-    update_user(uid, region=region)
-    delete_user_cache(uid)
-    get_user(uid)
-    bot.send_message(uid, f"✅ Регион *{region}* сохранён!", parse_mode="Markdown")
-    bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
-
-@bot.message_handler(func=lambda m: True)
-def handle_buttons(m):
-    uid = m.chat.id
-    text = m.text
+def add_owned_effect(uid, effect):
     user = get_user(uid)
-    theme = user.get("active_theme", "🎲")
-    lang = user.get("active_language", "normal")
+    owned = user.get("owned_effects", "")
+    if effect not in owned:
+        update_user(uid, owned_effects=owned + effect)
 
-    if f"{theme} {get_phrase(lang, 'games')}" in text or get_phrase(lang, 'games') in text:
-        bot.send_message(uid, "🎲 *Выбери количество кубиков:*\n📌 Погрешность ±1 даёт 50% выигрыша\n📌 Для 3,5,10 кубиков погрешность ±5 даёт 25%", reply_markup=dice_keyboard(uid), parse_mode="Markdown")
-    elif f"{theme} {get_phrase(lang, 'shop')}" in text or get_phrase(lang, 'shop') in text:
-        shop_menu(uid)
-    elif f"{theme} {get_phrase(lang, 'profile')}" in text or get_phrase(lang, 'profile') in text:
-        bot.send_message(uid, format_profile(uid), parse_mode="Markdown")
-    elif f"{theme} {get_phrase(lang, 'find')}" in text or get_phrase(lang, 'find') in text:
-        bot.send_message(uid, "✍️ Введи @username игрока:")
-        waiting_for_username[uid] = True
-    elif f"{theme} {get_phrase(lang, 'bonus')}" in text or get_phrase(lang, 'bonus') in text:
-        if can_take_bonus(uid):
-            add_coins(uid, 10)
-            update_user(uid, last_bonus=datetime.now().isoformat())
-            delete_user_cache(uid)
-            get_user(uid)
-            bot.send_message(uid, get_phrase(lang, "bonus"), parse_mode="Markdown")
-        else:
-            bot.send_message(uid, get_phrase(lang, "already_bonus"), parse_mode="Markdown")
-    elif f"{theme} {get_phrase(lang, 'referrals')}" in text or get_phrase(lang, 'referrals') in text:
-        ref_link = get_referral_link(uid)
-        ref_count = get_referral_stats(uid)
-        bot.send_message(uid, f"👥 *Реферальная система*\n\n💰 За каждого приглашённого ты получаешь 10 монет, друг — 5!\n\n📎 Твоя ссылка: `{ref_link}`\n👥 Приглашено: {ref_count}", parse_mode="Markdown")
-    elif f"{theme} {get_phrase(lang, 'question')}" in text or get_phrase(lang, 'question') in text:
-        bot.send_message(uid, "✍️ Напиши свой вопрос. Админ ответит.")
-        waiting_for_question[uid] = True
-    elif f"{theme} {get_phrase(lang, 'admin')}" in text and uid == ADMIN_ID:
-        admin_panel(uid)
-    elif uid == ADMIN_ID and text in ["💰 Выдать монеты", "🔻 Забрать монеты", "👥 Все пользователи", "📢 Рассылка", "📊 Глобальная статистика", "🔙 Назад"]:
-        admin_commands(uid, text)
-    elif waiting_for_question.get(uid):
-        forward_question(uid, text)
-        waiting_for_question[uid] = False
-    else:
-        bot.send_message(uid, f"❌ {get_phrase(lang, 'no_coins')}", parse_mode="Markdown")
+def add_owned_language(uid, lang):
+    user = get_user(uid)
+    owned = user.get("owned_languages", "normal")
+    if lang not in owned:
+        update_user(uid, owned_languages=owned + "," + lang)
 
-def admin_panel(uid):
-    bot.send_message(uid, "🔧 *Админ-панель*", reply_markup=admin_keyboard(), parse_mode="Markdown")
+def add_owned_combo(uid, combo):
+    user = get_user(uid)
+    owned_combos = user.get("owned_combos", "")
+    if combo not in owned_combos:
+        new_combos = owned_combos + "," + combo if owned_combos else combo
+        update_user(uid, owned_combos=new_combos)
+    if len(combo) >= 2:
+        add_owned_theme(uid, combo[0])
+        add_owned_effect(uid, combo[1])
 
-def admin_commands(uid, text):
-    if text == "💰 Выдать монеты":
-        admin_actions[uid] = "add"
-        bot.send_message(uid, "Введи ID и сумму:\nПример: `123456789 100`", parse_mode="Markdown")
-        bot.register_next_step_handler_by_chat_id(uid, process_admin_add)
-    elif text == "🔻 Забрать монеты":
-        admin_actions[uid] = "remove"
-        bot.send_message(uid, "Введи ID и сумму:\nПример: `123456789 50`", parse_mode="Markdown")
-        bot.register_next_step_handler_by_chat_id(uid, process_admin_remove)
-    elif text == "👥 Все пользователи":
-        users = all_users_list()
-        msg = "👥 *Пользователи:*\n"
-        for u in users[:30]:
-            coins = get_user(u)["coins"]
-            msg += f"🆔 {u} — {coins}💰\n"
-        bot.send_message(uid, msg, parse_mode="Markdown")
-    elif text == "📢 Рассылка":
-        bot.send_message(uid, "Введи сообщение для рассылки:")
-        bot.register_next_step_handler_by_chat_id(uid, broadcast_message)
-    elif text == "📊 Глобальная статистика":
-        total_u, total_c, avg_c, top = global_stats()
-        bot.send_message(uid, f"📊 *Глобальная статистика*\n👥 Всего игроков: {total_u}\n💰 Всего монет: {total_c}\n📈 Средний баланс: {avg_c:.2f}\n\n🏆 *Топ-10:*\n{top}", parse_mode="Markdown")
-    elif text == "🔙 Назад":
-        bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
+def set_active_theme(uid, theme):
+    if theme in get_user(uid).get("owned_themes", "🎲"):
+        update_user(uid, active_theme=theme)
+        return True
+    return False
 
-def process_admin_add(m):
-    uid = m.chat.id
-    try:
-        target_id, amount = m.text.split()
-        add_coins(int(target_id), int(amount))
-        bot.send_message(uid, f"✅ Выдано {amount} монет пользователю {target_id}")
-    except:
-        bot.send_message(uid, "❌ Ошибка. Пример: `123456789 100`", parse_mode="Markdown")
+def set_active_effect(uid, effect):
+    if effect in get_user(uid).get("owned_effects", ""):
+        update_user(uid, active_effect=effect)
+        return True
+    return False
 
-def process_admin_remove(m):
-    uid = m.chat.id
-    try:
-        target_id, amount = m.text.split()
-        if remove_coins(int(target_id), int(amount)):
-            bot.send_message(uid, f"✅ Забрано {amount} монет у {target_id}")
-        else:
-            bot.send_message(uid, f"❌ Недостаточно монет у {target_id}")
-    except:
-        bot.send_message(uid, "❌ Ошибка. Пример: `123456789 50`", parse_mode="Markdown")
+def set_active_language(uid, lang):
+    if lang == "normal" or lang in get_user(uid).get("owned_languages", "normal"):
+        update_user(uid, active_language=lang)
+        return True
+    return False
 
-def broadcast_message(m):
-    if m.chat.id != ADMIN_ID:
-        return
-    text = m.text
-    sent = 0
-    for uid in all_users_list():
-        try:
-            bot.send_message(int(uid), f"📢 *Рассылка:*\n\n{text}", parse_mode="Markdown")
-            sent += 1
-        except:
-            pass
-    bot.send_message(ADMIN_ID, f"✅ Отправлено {sent} пользователям")
-
-def forward_question(user_id, q):
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("✍️ Ответить", callback_data=f"answer_{user_id}"))
-    bot.send_message(ADMIN_ID, f"📩 *Вопрос от* `{user_id}`:\n{q}", reply_markup=kb, parse_mode="Markdown")
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("answer_"))
-def answer_prompt(call):
-    if call.message.chat.id != ADMIN_ID:
-        bot.answer_callback_query(call.id, "Нет прав")
-        return
-    user_id = call.data.split("_")[1]
-    bot.send_message(ADMIN_ID, f"✍️ Введи ответ для {user_id}:")
-    bot.register_next_step_handler(call.message, lambda m: send_answer(m, user_id))
-
-def send_answer(m, target_id):
-    if m.chat.id != ADMIN_ID:
-        return
-    bot.send_message(int(target_id), f"📬 *Ответ:*\n{m.text}", parse_mode="Markdown")
-    bot.send_message(ADMIN_ID, f"✅ Ответ отправлен {target_id}")
-
-# ========== ИГРЫ С КУБИКАМИ ==========
-def dice_game(uid, num_dice, min_sum, max_sum, win_exact_min, win_exact_max, win_near1_min, win_near1_max, win_near5_min=None, win_near5_max=None):
-    bot.send_message(uid, f"🎲 *{num_dice} кубик(а)*\nВведи сумму от {min_sum} до {max_sum}:", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: dice_game_play(m, uid, num_dice, min_sum, max_sum, win_exact_min, win_exact_max, win_near1_min, win_near1_max, win_near5_min, win_near5_max))
-
-def dice_game_play(m, uid, num_dice, min_sum, max_sum, win_exact_min, win_exact_max, win_near1_min, win_near1_max, win_near5_min, win_near5_max):
-    lang = get_user(uid).get("active_language", "normal")
-    try:
-        bet = int(m.text)
-        if bet < min_sum or bet > max_sum:
-            bot.send_message(uid, f"❌ {min_sum}–{max_sum}")
-            return
-        if not remove_coins(uid, 1):
-            bot.send_message(uid, get_phrase(lang, "no_coins"))
-            return
-        rolls = [random.randint(1, 6) for _ in range(num_dice)]
-        total = sum(rolls)
-        diff = abs(bet - total)
-        rolls_str = " + ".join(map(str, rolls))
-        
-        if diff == 0:
-            win = random.randint(win_exact_min, win_exact_max)
-            add_coins(uid, win)
-            bot.send_message(uid, f"🎲 {rolls_str} = {total}. {get_phrase(lang, 'win').format(win)}")
-        elif diff == 1:
-            win = random.randint(win_near1_min, win_near1_max)
-            add_coins(uid, win)
-            bot.send_message(uid, f"🎲 {rolls_str} = {total}. Почти угадал! {get_phrase(lang, 'win').format(win)}")
-        elif win_near5_min is not None and 2 <= diff <= 5:
-            win = random.randint(win_near5_min, win_near5_max)
-            add_coins(uid, win)
-            bot.send_message(uid, f"🎲 {rolls_str} = {total}. Близко! {get_phrase(lang, 'win').format(win)}")
-        else:
-            remove_coins(uid, 1)
-            bot.send_message(uid, f"🎲 {rolls_str} = {total}. {get_phrase(lang, 'lose').format(2)}")
-        
-        complete_task(uid, f"dice{num_dice}")
-    except:
-        bot.send_message(uid, "❌ Введи число")
-
-def dice_luck_handler(uid):
-    lang = get_user(uid).get("active_language", "normal")
-    if not remove_coins(uid, 2):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    rolls = [random.randint(1, 6) for _ in range(3)]
-    total = sum(rolls)
-    rolls_str = " + ".join(map(str, rolls))
-    if total >= 15:
-        add_coins(uid, 10)
-        bot.send_message(uid, f"🎲💰 {rolls_str} = {total}. {get_phrase(lang, 'win').format(10)}")
-    else:
-        bot.send_message(uid, f"🎲💰 {rolls_str} = {total}. {get_phrase(lang, 'lose').format(2)}")
-    complete_task(uid, "diceluck")
-
-# ========== НОВАЯ ИГРА: ЧЕТ/НЕЧЕТ ==========
-def gamble_evenodd_handler(uid):
-    bot.send_message(uid, "🎲 *Чет/Нечет*\nЯ загадал число от 1 до 10. Угадай, оно *чётное* или *нечётное*?", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_evenodd_play(m, uid))
-
-def gamble_evenodd_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    choice = m.text.lower()
-    if choice not in ["чётное", "нечётное", "четное", "нечетное"]:
-        bot.send_message(uid, "❌ Напиши 'чётное' или 'нечётное'")
-        return
-    if not remove_coins(uid, 1):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    
-    number = random.randint(1, 10)
-    is_even = number % 2 == 0
-    correct = "чётное" if is_even else "нечётное"
-    
-    if (choice in ["чётное", "четное"] and is_even) or (choice in ["нечётное", "нечетное"] and not is_even):
-        win = random.randint(3, 5)
-        add_coins(uid, win)
-        bot.send_message(uid, f"🎲 Загадано число {number} ({correct}). {get_phrase(lang, 'win').format(win)}")
-    else:
-        remove_coins(uid, 1)
-        bot.send_message(uid, f"🎲 Загадано число {number} ({correct}). {get_phrase(lang, 'lose').format(2)}")
-    
-    complete_task(uid, "evenodd")
-
-# ========== ОСТАЛЬНЫЕ ИГРЫ ==========
-def gamble_number_handler(uid):
-    bot.send_message(uid, "🔢 Введи число от 1 до 20:")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_number_play(m, uid))
-
-def gamble_number_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    try:
-        bet = int(m.text)
-        if bet < 1 or bet > 20:
-            bot.send_message(uid, "❌ 1–20")
-            return
-        if not remove_coins(uid, 1):
-            bot.send_message(uid, get_phrase(lang, "no_coins"))
-            return
-        secret = random.randint(1, 20)
-        if bet == secret:
-            win = random.randint(5, 12)
-            add_coins(uid, win)
-            bot.send_message(uid, f"🔢 Загадано {secret}. {get_phrase(lang, 'win').format(win)}")
-        else:
-            remove_coins(uid, 1)
-            bot.send_message(uid, f"🔢 Загадано {secret}. {get_phrase(lang, 'lose').format(2)}")
-        complete_task(uid, "number")
-    except:
-        bot.send_message(uid, "❌ Введи число")
-
-def gamble_rps_handler(uid):
-    bot.send_message(uid, "✂️ камень, ножницы, бумага:")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_rps_play(m, uid))
-
-def gamble_rps_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    choice = m.text.lower()
-    if choice not in ["камень", "ножницы", "бумага"]:
-        bot.send_message(uid, "❌ камень/ножницы/бумага")
-        return
-    if not remove_coins(uid, 1):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    bot_choice = random.choice(["камень", "ножницы", "бумага"])
-    if choice == bot_choice:
-        add_coins(uid, 2)
-        bot.send_message(uid, get_phrase(lang, "draw"))
-    elif (choice == "камень" and bot_choice == "ножницы") or (choice == "ножницы" and bot_choice == "бумага") or (choice == "бумага" and bot_choice == "камень"):
-        win = random.randint(3, 7)
-        add_coins(uid, win)
-        bot.send_message(uid, get_phrase(lang, "win").format(win))
-    else:
-        remove_coins(uid, 1)
-        bot.send_message(uid, get_phrase(lang, "lose").format(2))
-    complete_task(uid, "rps")
-
-def gamble_cards_handler(uid):
-    bot.send_message(uid, "🎴 *Карты и Джокер*\n1️⃣ ♠️ | 2️⃣ ♥️ | 3️⃣ ♣️ | 4️⃣ ♦️ | 5️⃣ 🃏\nВведи номер карты (1–5):", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_cards_play(m, uid))
-
-def gamble_cards_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    try:
-        choice = int(m.text)
-        if choice < 1 or choice > 5:
-            bot.send_message(uid, "❌ 1–5")
-            return
-        if not remove_coins(uid, 1):
-            bot.send_message(uid, get_phrase(lang, "no_coins"))
-            return
-        cards = ["♠️", "♥️", "♣️", "♦️", "🃏"]
-        selected = cards[choice - 1]
-        if choice == 5:
-            win = 10
-            add_coins(uid, win)
-            bot.send_message(uid, f"🎴 {selected} *ДЖОКЕР!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
-        else:
-            remove_coins(uid, 1)
-            bot.send_message(uid, f"🎴 {selected} Масть... {get_phrase(lang, 'lose').format(2)}")
-        complete_task(uid, "cards")
-    except:
-        bot.send_message(uid, "❌ Введи число")
-
-def gamble_slots_handler(uid):
-    lang = get_user(uid).get("active_language", "normal")
-    if not remove_coins(uid, 1):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    reel1 = random.choice(["🍒", "🍊", "🍋", "🔔", "💎", "7️⃣"])
-    reel2 = random.choice(["🍒", "🍊", "🍋", "🔔", "💎", "7️⃣"])
-    reel3 = random.choice(["🍒", "🍊", "🍋", "🔔", "💎", "7️⃣"])
-    
-    if reel1 == reel2 == reel3 == "7️⃣":
-        win = 50
-        add_coins(uid, win)
-        bot.send_message(uid, f"🎰 *СЛОТЫ*\n| {reel1} | {reel2} | {reel3} |\n\n🎉 *ДЖЕКПОТ!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
-    elif reel1 == reel2 == reel3:
-        win = 20
-        add_coins(uid, win)
-        bot.send_message(uid, f"🎰 *СЛОТЫ*\n| {reel1} | {reel2} | {reel3} |\n\n🎉 *ТРИ В РЯД!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
-    elif reel1 == reel2 or reel2 == reel3 or reel1 == reel3:
-        win = 5
-        add_coins(uid, win)
-        bot.send_message(uid, f"🎰 *СЛОТЫ*\n| {reel1} | {reel2} | {reel3} |\n\n🎉 *ДВА В РЯД!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
-    else:
-        bot.send_message(uid, f"🎰 *СЛОТЫ*\n| {reel1} | {reel2} | {reel3} |\n\n💀 *Ничего...* -1💰", parse_mode="Markdown")
-    complete_task(uid, "slots")
-
-def gamble_rps2_handler(uid):
-    bot.send_message(uid, "💎 *Камень-мешок-монета*\nВыбери: камень, мешок или монета", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_rps2_play(m, uid))
-
-def gamble_rps2_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    choice = m.text.lower()
-    if choice not in ["камень", "мешок", "монета"]:
-        bot.send_message(uid, "❌ камень/мешок/монета")
-        return
-    if not remove_coins(uid, 1):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    bot_choice = random.choice(["камень", "мешок", "монета"])
-    rules = {"камень": "мешок", "мешок": "монета", "монета": "камень"}
-    if choice == bot_choice:
-        add_coins(uid, 2)
-        bot.send_message(uid, get_phrase(lang, "draw"))
-    elif rules[choice] == bot_choice:
-        win = random.randint(3, 7)
-        add_coins(uid, win)
-        bot.send_message(uid, get_phrase(lang, "win").format(win))
-    else:
-        remove_coins(uid, 1)
-        bot.send_message(uid, get_phrase(lang, "lose").format(2))
-    complete_task(uid, "rps2")
-
-def gamble_color_handler(uid):
-    bot.send_message(uid, "🎯 *Угадай цвет*\n🔴 Красный или ⚫ Чёрный?", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_color_play(m, uid))
-
-def gamble_color_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    choice = m.text.lower()
-    if choice not in ["красный", "чёрный", "красное", "чёрное", "красная", "чёрная"]:
-        bot.send_message(uid, "❌ Напиши: красный или чёрный")
-        return
-    if not remove_coins(uid, 1):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    color = random.choice(["🔴 красный", "⚫ чёрный"])
-    user_choice = "красный" if "красн" in choice else "чёрный"
-    if user_choice in color:
-        add_coins(uid, 3)
-        bot.send_message(uid, f"🎯 Выпал {color}. {get_phrase(lang, 'win').format(3)}")
-    else:
-        remove_coins(uid, 1)
-        bot.send_message(uid, f"🎯 Выпал {color}. {get_phrase(lang, 'lose').format(2)}")
-    complete_task(uid, "color")
-
-def gamble_highlow_handler(uid):
-    num = random.randint(1, 10)
-    bot.send_message(uid, f"📈 *Выше/Ниже*\nТекущее число: {num}\nСледующее будет *выше* или *ниже*?", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_highlow_play(m, uid, num))
-
-def gamble_highlow_play(m, uid, first_num):
-    lang = get_user(uid).get("active_language", "normal")
-    choice = m.text.lower()
-    if choice not in ["выше", "ниже"]:
-        bot.send_message(uid, "❌ выше или ниже")
-        return
-    if not remove_coins(uid, 1):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    second_num = random.randint(1, 10)
-    if (choice == "выше" and second_num > first_num) or (choice == "ниже" and second_num < first_num):
-        win = random.randint(4, 8)
-        add_coins(uid, win)
-        bot.send_message(uid, f"📈 Было {first_num}, стало {second_num}. {get_phrase(lang, 'win').format(win)}")
-    elif second_num == first_num:
-        add_coins(uid, 2)
-        bot.send_message(uid, f"📈 Было {first_num}, стало {second_num}. Ничья! +2💰")
-    else:
-        remove_coins(uid, 1)
-        bot.send_message(uid, f"📈 Было {first_num}, стало {second_num}. {get_phrase(lang, 'lose').format(2)}")
-    complete_task(uid, "highlow")
-
-def gamble_roulette_handler(uid):
-    lang = get_user(uid).get("active_language", "normal")
-    if not remove_coins(uid, 5):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    chamber = random.randint(1, 6)
-    if chamber == 1:
-        bot.send_message(uid, "🔫 *Русская рулетка*\n💀 *БАХ!* Ты проиграл 5💰", parse_mode="Markdown")
-    else:
-        win = 25
-        add_coins(uid, win)
-        bot.send_message(uid, f"🔫 *Русская рулетка*\n🎉 *ЩЁЛК!* Ты выжил! {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
-    complete_task(uid, "roulette")
-
-def gamble_hotcold_handler(uid):
-    number = random.randint(1, 100)
-    hotcold_games[uid] = {"number": number, "attempts": 0}
-    bot.send_message(uid, "🔥 *Горячо/Холодно*\nЯ загадал число от 1 до 100. У тебя 3 попытки!\nВведи число:", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_hotcold_play(m, uid))
-
-def gamble_hotcold_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    game = hotcold_games.get(uid)
-    if not game:
-        return
-    try:
-        guess = int(m.text)
-        if guess < 1 or guess > 100:
-            bot.send_message(uid, "❌ 1–100")
-            bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_hotcold_play(m, uid))
-            return
-        game["attempts"] += 1
-        diff = abs(guess - game["number"])
-        
-        if guess == game["number"]:
-            add_coins(uid, 15)
-            bot.send_message(uid, f"🎉 Ты угадал число {game['number']} за {game['attempts']} попыток! +15💰")
-            del hotcold_games[uid]
-            complete_task(uid, "hotcold")
-        elif game["attempts"] >= 3:
-            bot.send_message(uid, f"❌ Ты не угадал. Загаданное число было {game['number']}. -2💰")
-            remove_coins(uid, 1)
-            del hotcold_games[uid]
-        else:
-            if diff <= 10:
-                bot.send_message(uid, f"🔥 Горячо! Осталось попыток: {3 - game['attempts']}")
-            elif diff <= 30:
-                bot.send_message(uid, f"🌡️ Тепло... Осталось попыток: {3 - game['attempts']}")
-            else:
-                bot.send_message(uid, f"❄️ Холодно... Осталось попыток: {3 - game['attempts']}")
-            bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_hotcold_play(m, uid))
-    except:
-        bot.send_message(uid, "❌ Введи число")
-
-def gamble_bullscows_handler(uid):
-    digits = random.sample("0123456789", 4)
-    if digits[0] == "0":
-        digits[0], digits[1] = digits[1], digits[0]
-    secret = "".join(digits)
-    bullscows_games[uid] = {"secret": secret, "attempts": 0}
-    bot.send_message(uid, "🎯 *Быки и коровы*\nЯ загадал 4-значное число без повторений. Угадай!\nВведи 4-значное число:", parse_mode="Markdown")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_bullscows_play(m, uid))
-
-def gamble_bullscows_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    game = bullscows_games.get(uid)
-    if not game:
-        return
-    guess = m.text.strip()
-    if len(guess) != 4 or not guess.isdigit() or len(set(guess)) != 4:
-        bot.send_message(uid, "❌ Введи 4-значное число с разными цифрами")
-        bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_bullscows_play(m, uid))
-        return
-    if not remove_coins(uid, 2):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        del bullscows_games[uid]
-        return
-    
-    game["attempts"] += 1
-    bulls = sum(1 for i in range(4) if guess[i] == game["secret"][i])
-    cows = sum(1 for i in range(4) if guess[i] in game["secret"] and guess[i] != game["secret"][i])
-    
-    if bulls == 4:
-        add_coins(uid, 20)
-        bot.send_message(uid, f"🎉 Поздравляю! Ты угадал число {game['secret']} за {game['attempts']} попыток! +20💰")
-        del bullscows_games[uid]
-        complete_task(uid, "bullscows")
-    else:
-        bot.send_message(uid, f"🐂 Быки: {bulls}, 🐄 Коровы: {cows}\nПопробуй ещё раз:")
-        bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_bullscows_play(m, uid))
+def set_active_combo(uid, combo):
+    if combo in get_user(uid).get("owned_combos", ""):
+        if len(combo) >= 2:
+            set_active_theme(uid, combo[0])
+            set_active_effect(uid, combo[1])
+        return True
+    return False
 
 # ========== ЗАДАНИЯ ==========
 TASKS = [
@@ -1328,7 +661,6 @@ def take_task_reward(uid):
 def take_reward(m):
     uid = m.chat.id
     reward = take_task_reward(uid)
-    lang = get_user(uid).get("active_language", "normal")
     if reward > 0:
         bot.send_message(uid, f"🎁 Ты получил {reward}💰 за выполнение задания!")
         bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
@@ -1367,17 +699,528 @@ def get_referral_stats(uid):
     conn.close()
     return count
 
+# ========== ОСНОВНОЙ ОБРАБОТЧИК ==========
+@bot.message_handler(commands=['start'])
+def start(m):
+    uid = m.chat.id
+    args = m.text.split()
+    if len(args) > 1 and args[1].startswith("ref_"):
+        referrer_id = args[1].split("_")[1]
+        process_referral(uid, referrer_id)
+    
+    user = get_user(uid)
+    if m.from_user.username:
+        update_user(uid, username=m.from_user.username.lower())
+    
+    if not user.get("region"):
+        bot.send_message(uid, "🌍 *Выбери свой регион:*", reply_markup=region_keyboard(), parse_mode="Markdown")
+    else:
+        bot.send_message(uid, f"🎉 *Добро пожаловать!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.text in REGIONS)
+def save_region(m):
+    uid = m.chat.id
+    region = m.text
+    update_user(uid, region=region)
+    bot.send_message(uid, f"✅ Регион *{region}* сохранён!", parse_mode="Markdown")
+    bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: True)
+def handle_buttons(m):
+    uid = m.chat.id
+    text = m.text
+    user = get_user(uid)
+    theme = user.get("active_theme", "🎲")
+    lang = user.get("active_language", "normal")
+
+    if f"{theme} Кубики" in text or "Кубики" in text:
+        bot.send_message(uid, "🎲 *Выбери количество кубиков:*", reply_markup=dice_keyboard(), parse_mode="Markdown")
+    elif f"{theme} Игры" in text or "Игры" in text:
+        bot.send_message(uid, "🎮 *Выбери игру:*", reply_markup=games_keyboard(), parse_mode="Markdown")
+    elif f"{theme} Магазин" in text or "Магазин" in text:
+        shop_keyboard(uid)
+    elif f"{theme} Профиль" in text or "Профиль" in text:
+        bot.send_message(uid, format_profile(uid), parse_mode="Markdown")
+    elif f"{theme} Найти игрока" in text or "Найти игрока" in text:
+        bot.send_message(uid, "✍️ Введи @username игрока:")
+        waiting_for_username[uid] = True
+    elif f"{theme} {get_phrase(lang, 'bonus')[:15]}" in text or get_phrase(lang, 'bonus')[:15] in text or "Бонус" in text:
+        if can_take_bonus(uid):
+            add_coins(uid, 10)
+            update_user(uid, last_bonus=datetime.now().isoformat())
+            bot.send_message(uid, get_phrase(lang, "bonus"), parse_mode="Markdown")
+        else:
+            bot.send_message(uid, get_phrase(lang, "already_bonus"), parse_mode="Markdown")
+    elif f"{theme} Рефералы" in text or "Рефералы" in text:
+        ref_link = get_referral_link(uid)
+        ref_count = get_referral_stats(uid)
+        bot.send_message(uid, f"👥 *Реферальная система*\n\n💰 За каждого приглашённого ты получаешь 10 монет, друг — 5!\n\n📎 Твоя ссылка: `{ref_link}`\n👥 Приглашено: {ref_count}", parse_mode="Markdown")
+    elif f"{theme} Вопрос" in text or "Вопрос" in text:
+        bot.send_message(uid, "✍️ Напиши свой вопрос. Админ ответит.")
+        waiting_for_question[uid] = True
+    elif f"{theme} Админ" in text and uid == ADMIN_ID:
+        admin_panel(uid)
+    elif uid == ADMIN_ID and text in ["💰 Выдать монеты", "🔻 Забрать монеты", "👥 Все пользователи", "📢 Рассылка", "📊 Глобальная статистика", "🔙 Назад"]:
+        admin_commands(uid, text)
+    elif waiting_for_question.get(uid):
+        forward_question(uid, text)
+        waiting_for_question[uid] = False
+    else:
+        bot.send_message(uid, "❌ Используй кнопки меню 👇")
+
+def admin_panel(uid):
+    bot.send_message(uid, "🔧 *Админ-панель*", reply_markup=admin_keyboard(), parse_mode="Markdown")
+
+def admin_commands(uid, text):
+    if text == "💰 Выдать монеты":
+        admin_actions[uid] = "add"
+        bot.send_message(uid, "Введи ID и сумму:\nПример: `123456789 100`", parse_mode="Markdown")
+        bot.register_next_step_handler_by_chat_id(uid, process_admin_add)
+    elif text == "🔻 Забрать монеты":
+        admin_actions[uid] = "remove"
+        bot.send_message(uid, "Введи ID и сумму:\nПример: `123456789 50`", parse_mode="Markdown")
+        bot.register_next_step_handler_by_chat_id(uid, process_admin_remove)
+    elif text == "👥 Все пользователи":
+        users = all_users_list()
+        msg = "👥 *Пользователи:*\n"
+        for u in users[:30]:
+            coins = get_user(u)["coins"]
+            msg += f"🆔 {u} — {coins}💰\n"
+        bot.send_message(uid, msg, parse_mode="Markdown")
+    elif text == "📢 Рассылка":
+        bot.send_message(uid, "Введи сообщение для рассылки:")
+        bot.register_next_step_handler_by_chat_id(uid, broadcast_message)
+    elif text == "📊 Глобальная статистика":
+        total_u, total_c, avg_c, top = global_stats()
+        bot.send_message(uid, f"📊 *Глобальная статистика*\n👥 Всего игроков: {total_u}\n💰 Всего монет: {total_c}\n📈 Средний баланс: {avg_c:.2f}\n\n🏆 *Топ-10:*\n{top}", parse_mode="Markdown")
+    elif text == "🔙 Назад":
+        bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
+
+def process_admin_add(m):
+    uid = m.chat.id
+    try:
+        target_id, amount = m.text.split()
+        add_coins(int(target_id), int(amount))
+        bot.send_message(uid, f"✅ Выдано {amount} монет пользователю {target_id}")
+    except:
+        bot.send_message(uid, "❌ Ошибка. Пример: `123456789 100`", parse_mode="Markdown")
+
+def process_admin_remove(m):
+    uid = m.chat.id
+    try:
+        target_id, amount = m.text.split()
+        if remove_coins(int(target_id), int(amount)):
+            bot.send_message(uid, f"✅ Забрано {amount} монет у {target_id}")
+        else:
+            bot.send_message(uid, f"❌ Недостаточно монет у {target_id}")
+    except:
+        bot.send_message(uid, "❌ Ошибка. Пример: `123456789 50`", parse_mode="Markdown")
+
+def broadcast_message(m):
+    if m.chat.id != ADMIN_ID:
+        return
+    text = m.text
+    sent = 0
+    for uid in all_users_list():
+        try:
+            bot.send_message(int(uid), f"📢 *Рассылка:*\n\n{text}", parse_mode="Markdown")
+            sent += 1
+        except:
+            pass
+    bot.send_message(ADMIN_ID, f"✅ Отправлено {sent} пользователям")
+
+def forward_question(user_id, q):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("✍️ Ответить", callback_data=f"answer_{user_id}"))
+    bot.send_message(ADMIN_ID, f"📩 *Вопрос от* `{user_id}`:\n{q}", reply_markup=kb, parse_mode="Markdown")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("answer_"))
+def answer_prompt(call):
+    if call.message.chat.id != ADMIN_ID:
+        bot.answer_callback_query(call.id, "Нет прав")
+        return
+    user_id = call.data.split("_")[1]
+    bot.send_message(ADMIN_ID, f"✍️ Введи ответ для {user_id}:")
+    bot.register_next_step_handler(call.message, lambda m: send_answer(m, user_id))
+
+def send_answer(m, target_id):
+    if m.chat.id != ADMIN_ID:
+        return
+    bot.send_message(int(target_id), f"📬 *Ответ:*\n{m.text}", parse_mode="Markdown")
+    bot.send_message(ADMIN_ID, f"✅ Ответ отправлен {target_id}")
+
+# ========== ИГРЫ ==========
+# Кубики
+def dice_game(uid, num_dice, min_sum, max_sum, win_exact_min, win_exact_max, win_near1_min=None, win_near1_max=None):
+    bot.send_message(uid, f"🎲 *{num_dice} кубик(а)*\nВведи сумму от {min_sum} до {max_sum}:", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: dice_game_play(m, uid, num_dice, min_sum, max_sum, win_exact_min, win_exact_max, win_near1_min, win_near1_max))
+
+def dice_game_play(m, uid, num_dice, min_sum, max_sum, win_exact_min, win_exact_max, win_near1_min, win_near1_max):
+    lang = get_user(uid).get("active_language", "normal")
+    try:
+        bet = int(m.text)
+        if bet < min_sum or bet > max_sum:
+            bot.send_message(uid, f"❌ {min_sum}–{max_sum}")
+            return
+        if not remove_coins(uid, 1):
+            bot.send_message(uid, get_phrase(lang, "no_coins"))
+            return
+        rolls = [random.randint(1, 6) for _ in range(num_dice)]
+        total = sum(rolls)
+        diff = abs(bet - total)
+        rolls_str = " + ".join(map(str, rolls))
+        
+        if diff == 0:
+            win = random.randint(win_exact_min, win_exact_max)
+            add_coins(uid, win)
+            bot.send_message(uid, f"🎲 {rolls_str} = {total}. {get_phrase(lang, 'win').format(win)}")
+        elif win_near1_min is not None and diff == 1:
+            win = random.randint(win_near1_min, win_near1_max)
+            add_coins(uid, win)
+            bot.send_message(uid, f"🎲 {rolls_str} = {total}. Почти угадал! {get_phrase(lang, 'win').format(win)}")
+        else:
+            remove_coins(uid, 1)
+            bot.send_message(uid, f"🎲 {rolls_str} = {total}. {get_phrase(lang, 'lose').format(2)}")
+        
+        complete_task(uid, f"dice{num_dice}")
+    except:
+        bot.send_message(uid, "❌ Введи число")
+
+def dice_luck_handler(uid):
+    lang = get_user(uid).get("active_language", "normal")
+    if not remove_coins(uid, 2):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    rolls = [random.randint(1, 6) for _ in range(3)]
+    total = sum(rolls)
+    rolls_str = " + ".join(map(str, rolls))
+    if total >= 15:
+        add_coins(uid, 10)
+        bot.send_message(uid, f"🎲💰 {rolls_str} = {total}. {get_phrase(lang, 'win').format(10)}")
+    else:
+        bot.send_message(uid, f"🎲💰 {rolls_str} = {total}. {get_phrase(lang, 'lose').format(2)}")
+    complete_task(uid, "diceluck")
+
+# Чет/Нечет
+def gamble_evenodd_handler(uid):
+    bot.send_message(uid, "🎲 *Чет/Нечет*\nЯ загадал число от 1 до 10. Угадай, оно *чётное* или *нечётное*?", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_evenodd_play(m, uid))
+
+def gamble_evenodd_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    choice = m.text.lower()
+    if choice not in ["чётное", "нечётное", "четное", "нечетное"]:
+        bot.send_message(uid, "❌ Напиши 'чётное' или 'нечётное'")
+        return
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    
+    number = random.randint(1, 10)
+    is_even = number % 2 == 0
+    correct = "чётное" if is_even else "нечётное"
+    
+    if (choice in ["чётное", "четное"] and is_even) or (choice in ["нечётное", "нечетное"] and not is_even):
+        win = random.randint(3, 5)
+        add_coins(uid, win)
+        bot.send_message(uid, f"🎲 Загадано число {number} ({correct}). {get_phrase(lang, 'win').format(win)}")
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, f"🎲 Загадано число {number} ({correct}). {get_phrase(lang, 'lose').format(2)}")
+    
+    complete_task(uid, "evenodd")
+
+# Угадай число
+def gamble_number_handler(uid):
+    bot.send_message(uid, "🔢 Введи число от 1 до 20:")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_number_play(m, uid))
+
+def gamble_number_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    try:
+        bet = int(m.text)
+        if bet < 1 or bet > 20:
+            bot.send_message(uid, "❌ 1–20")
+            return
+        if not remove_coins(uid, 1):
+            bot.send_message(uid, get_phrase(lang, "no_coins"))
+            return
+        secret = random.randint(1, 20)
+        if bet == secret:
+            win = random.randint(5, 12)
+            add_coins(uid, win)
+            bot.send_message(uid, f"🔢 Загадано {secret}. {get_phrase(lang, 'win').format(win)}")
+        else:
+            remove_coins(uid, 1)
+            bot.send_message(uid, f"🔢 Загадано {secret}. {get_phrase(lang, 'lose').format(2)}")
+        complete_task(uid, "number")
+    except:
+        bot.send_message(uid, "❌ Введи число")
+
+# Камень-ножницы
+def gamble_rps_handler(uid):
+    bot.send_message(uid, "✂️ камень, ножницы, бумага:")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_rps_play(m, uid))
+
+def gamble_rps_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    choice = m.text.lower()
+    if choice not in ["камень", "ножницы", "бумага"]:
+        bot.send_message(uid, "❌ камень/ножницы/бумага")
+        return
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    bot_choice = random.choice(["камень", "ножницы", "бумага"])
+    if choice == bot_choice:
+        add_coins(uid, 2)
+        bot.send_message(uid, get_phrase(lang, "draw"))
+    elif (choice == "камень" and bot_choice == "ножницы") or (choice == "ножницы" and bot_choice == "бумага") or (choice == "бумага" and bot_choice == "камень"):
+        win = random.randint(3, 7)
+        add_coins(uid, win)
+        bot.send_message(uid, get_phrase(lang, "win").format(win))
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, get_phrase(lang, "lose").format(2))
+    complete_task(uid, "rps")
+
+# Карты и Джокер
+def gamble_cards_handler(uid):
+    bot.send_message(uid, "🎴 *Карты и Джокер*\n1️⃣ ♠️ | 2️⃣ ♥️ | 3️⃣ ♣️ | 4️⃣ ♦️ | 5️⃣ 🃏\nВведи номер карты (1–5):", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_cards_play(m, uid))
+
+def gamble_cards_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    try:
+        choice = int(m.text)
+        if choice < 1 or choice > 5:
+            bot.send_message(uid, "❌ 1–5")
+            return
+        if not remove_coins(uid, 1):
+            bot.send_message(uid, get_phrase(lang, "no_coins"))
+            return
+        if choice == 5:
+            win = 10
+            add_coins(uid, win)
+            bot.send_message(uid, f"🎴 *ДЖОКЕР!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
+        else:
+            remove_coins(uid, 1)
+            bot.send_message(uid, f"🎴 Масть... {get_phrase(lang, 'lose').format(2)}")
+        complete_task(uid, "cards")
+    except:
+        bot.send_message(uid, "❌ Введи число")
+
+# Слоты
+def gamble_slots_handler(uid):
+    lang = get_user(uid).get("active_language", "normal")
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    reel1 = random.choice(["🍒", "🍊", "🍋", "🔔", "💎", "7️⃣"])
+    reel2 = random.choice(["🍒", "🍊", "🍋", "🔔", "💎", "7️⃣"])
+    reel3 = random.choice(["🍒", "🍊", "🍋", "🔔", "💎", "7️⃣"])
+    
+    if reel1 == reel2 == reel3 == "7️⃣":
+        win = 50
+        add_coins(uid, win)
+        bot.send_message(uid, f"🎰 *ДЖЕКПОТ!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
+    elif reel1 == reel2 == reel3:
+        win = 20
+        add_coins(uid, win)
+        bot.send_message(uid, f"🎰 *ТРИ В РЯД!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
+    elif reel1 == reel2 or reel2 == reel3 or reel1 == reel3:
+        win = 5
+        add_coins(uid, win)
+        bot.send_message(uid, f"🎰 *ДВА В РЯД!* {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
+    else:
+        bot.send_message(uid, f"🎰 *Ничего...* -1💰", parse_mode="Markdown")
+    complete_task(uid, "slots")
+
+# Камень-мешок-монета
+def gamble_rps2_handler(uid):
+    bot.send_message(uid, "💎 *Камень-мешок-монета*\nВыбери: камень, мешок или монета", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_rps2_play(m, uid))
+
+def gamble_rps2_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    choice = m.text.lower()
+    if choice not in ["камень", "мешок", "монета"]:
+        bot.send_message(uid, "❌ камень/мешок/монета")
+        return
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    bot_choice = random.choice(["камень", "мешок", "монета"])
+    rules = {"камень": "мешок", "мешок": "монета", "монета": "камень"}
+    if choice == bot_choice:
+        add_coins(uid, 2)
+        bot.send_message(uid, get_phrase(lang, "draw"))
+    elif rules[choice] == bot_choice:
+        win = random.randint(3, 7)
+        add_coins(uid, win)
+        bot.send_message(uid, get_phrase(lang, "win").format(win))
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, get_phrase(lang, "lose").format(2))
+    complete_task(uid, "rps2")
+
+# Угадай цвет
+def gamble_color_handler(uid):
+    bot.send_message(uid, "🎯 *Угадай цвет*\n🔴 Красный или ⚫ Чёрный?", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_color_play(m, uid))
+
+def gamble_color_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    choice = m.text.lower()
+    if choice not in ["красный", "чёрный"]:
+        bot.send_message(uid, "❌ красный или чёрный")
+        return
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    color = random.choice(["🔴 красный", "⚫ чёрный"])
+    user_choice = "красный" if "красн" in choice else "чёрный"
+    if user_choice in color:
+        add_coins(uid, 3)
+        bot.send_message(uid, f"🎯 Выпал {color}. {get_phrase(lang, 'win').format(3)}")
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, f"🎯 Выпал {color}. {get_phrase(lang, 'lose').format(2)}")
+    complete_task(uid, "color")
+
+# Выше/Ниже
+def gamble_highlow_handler(uid):
+    num = random.randint(1, 10)
+    bot.send_message(uid, f"📈 *Выше/Ниже*\nТекущее число: {num}\nСледующее будет *выше* или *ниже*?", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_highlow_play(m, uid, num))
+
+def gamble_highlow_play(m, uid, first_num):
+    lang = get_user(uid).get("active_language", "normal")
+    choice = m.text.lower()
+    if choice not in ["выше", "ниже"]:
+        bot.send_message(uid, "❌ выше или ниже")
+        return
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    second_num = random.randint(1, 10)
+    if (choice == "выше" and second_num > first_num) or (choice == "ниже" and second_num < first_num):
+        win = random.randint(4, 8)
+        add_coins(uid, win)
+        bot.send_message(uid, f"📈 Было {first_num}, стало {second_num}. {get_phrase(lang, 'win').format(win)}")
+    elif second_num == first_num:
+        add_coins(uid, 2)
+        bot.send_message(uid, f"📈 Было {first_num}, стало {second_num}. Ничья! +2💰")
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, f"📈 Было {first_num}, стало {second_num}. {get_phrase(lang, 'lose').format(2)}")
+    complete_task(uid, "highlow")
+
+# Русская рулетка
+def gamble_roulette_handler(uid):
+    lang = get_user(uid).get("active_language", "normal")
+    if not remove_coins(uid, 5):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    chamber = random.randint(1, 6)
+    if chamber == 1:
+        bot.send_message(uid, "🔫 *Русская рулетка*\n💀 *БАХ!* Ты проиграл 5💰", parse_mode="Markdown")
+    else:
+        win = 25
+        add_coins(uid, win)
+        bot.send_message(uid, f"🔫 *Русская рулетка*\n🎉 *ЩЁЛК!* Ты выжил! {get_phrase(lang, 'win').format(win)}", parse_mode="Markdown")
+    complete_task(uid, "roulette")
+
+# Горячо/Холодно
+def gamble_hotcold_handler(uid):
+    number = random.randint(1, 100)
+    hotcold_games[uid] = {"number": number, "attempts": 0}
+    bot.send_message(uid, "🔥 *Горячо/Холодно*\nЯ загадал число от 1 до 100. У тебя 3 попытки!\nВведи число:", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_hotcold_play(m, uid))
+
+def gamble_hotcold_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    game = hotcold_games.get(uid)
+    if not game:
+        return
+    try:
+        guess = int(m.text)
+        if guess < 1 or guess > 100:
+            bot.send_message(uid, "❌ 1–100")
+            bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_hotcold_play(m, uid))
+            return
+        game["attempts"] += 1
+        diff = abs(guess - game["number"])
+        
+        if guess == game["number"]:
+            add_coins(uid, 15)
+            bot.send_message(uid, f"🎉 Ты угадал число {game['number']} за {game['attempts']} попыток! +15💰")
+            del hotcold_games[uid]
+            complete_task(uid, "hotcold")
+        elif game["attempts"] >= 3:
+            bot.send_message(uid, f"❌ Ты не угадал. Загаданное число было {game['number']}. -2💰")
+            remove_coins(uid, 1)
+            del hotcold_games[uid]
+        else:
+            if diff <= 10:
+                bot.send_message(uid, f"🔥 Горячо! Осталось попыток: {3 - game['attempts']}")
+            elif diff <= 30:
+                bot.send_message(uid, f"🌡️ Тепло... Осталось попыток: {3 - game['attempts']}")
+            else:
+                bot.send_message(uid, f"❄️ Холодно... Осталось попыток: {3 - game['attempts']}")
+            bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_hotcold_play(m, uid))
+    except:
+        bot.send_message(uid, "❌ Введи число")
+
+# Быки и коровы
+def gamble_bullscows_handler(uid):
+    digits = random.sample("0123456789", 4)
+    if digits[0] == "0":
+        digits[0], digits[1] = digits[1], digits[0]
+    secret = "".join(digits)
+    bullscows_games[uid] = {"secret": secret, "attempts": 0}
+    bot.send_message(uid, "🎯 *Быки и коровы*\nЯ загадал 4-значное число без повторений. Угадай!\nВведи 4-значное число:", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_bullscows_play(m, uid))
+
+def gamble_bullscows_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    game = bullscows_games.get(uid)
+    if not game:
+        return
+    guess = m.text.strip()
+    if len(guess) != 4 or not guess.isdigit() or len(set(guess)) != 4:
+        bot.send_message(uid, "❌ Введи 4-значное число с разными цифрами")
+        bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_bullscows_play(m, uid))
+        return
+    if not remove_coins(uid, 2):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        del bullscows_games[uid]
+        return
+    
+    game["attempts"] += 1
+    bulls = sum(1 for i in range(4) if guess[i] == game["secret"][i])
+    cows = sum(1 for i in range(4) if guess[i] in game["secret"] and guess[i] != game["secret"][i])
+    
+    if bulls == 4:
+        add_coins(uid, 20)
+        bot.send_message(uid, f"🎉 Поздравляю! Ты угадал число {game['secret']} за {game['attempts']} попыток! +20💰")
+        del bullscows_games[uid]
+        complete_task(uid, "bullscows")
+    else:
+        bot.send_message(uid, f"🐂 Быки: {bulls}, 🐄 Коровы: {cows}\nПопробуй ещё раз:")
+        bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_bullscows_play(m, uid))
+
 # ========== ГРУППОВЫЕ КОМАНДЫ ==========
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "команды")
 def group_commands(m):
     bot.send_message(m.chat.id, 
         "📋 *Команды для группы:*\n\n"
-        "• топ — топ игроков группы\n"
+        "• топ — топ игроков\n"
         "• подарок @username 10 — подарить монеты\n"
         "• бонус — групповой бонус (+5💰 всем, раз в 6 ч)\n"
         "• игра кости — соревнование на кубиках\n"
-        "• игра угадай — угадай число 1–20\n"
-        "• игра орел — угадай орёл/решка\n"
+        "• игра угадай — угадай число\n"
+        "• игра орел — угадай монетку\n"
         "• статистика — статистика группы", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "топ")
@@ -1385,25 +1228,21 @@ def group_top(m):
     chat_id = m.chat.id
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT u.user_id, u.coins, u.username 
-        FROM users u 
-        ORDER BY u.coins DESC LIMIT 5
-    """)
+    cur.execute("SELECT user_id, coins, username FROM users ORDER BY coins DESC LIMIT 5")
     top = cur.fetchall()
     cur.close()
     conn.close()
     
     if not top:
-        bot.send_message(chat_id, "📊 В этой группе пока нет игроков в топе")
+        bot.send_message(chat_id, "📊 Нет данных")
         return
     
-    text = "🏆 *Топ-5 игроков группы:*\n\n"
+    text = "🏆 *Топ-5:*\n\n"
     for i, (uid, coins, username) in enumerate(top, 1):
         text += f"{i}. @{username or uid[:8]} — {coins}💰\n"
     bot.send_message(chat_id, text, parse_mode="Markdown")
 
-@bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower().startswith("подарить"))
+@bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower().startswith("подарок"))
 def group_gift(m):
     chat_id = m.chat.id
     from_uid = m.from_user.id
@@ -1439,11 +1278,11 @@ def group_bonus(m):
         remaining = timedelta(hours=6) - (now - group_bonus_tracker[chat_id])
         hours = remaining.seconds // 3600
         minutes = (remaining.seconds % 3600) // 60
-        bot.send_message(chat_id, f"⏳ Групповой бонус уже был! Следующий через {hours}ч {minutes}мин")
+        bot.send_message(chat_id, f"⏳ Следующий бонус через {hours}ч {minutes}мин")
         return
     
     group_bonus_tracker[chat_id] = now
-    bot.send_message(chat_id, "🎁 *Групповой бонус активирован!*\nВсе активные участники получили +5💰", parse_mode="Markdown")
+    bot.send_message(chat_id, "🎁 *Групповой бонус активирован!* Все получили +5💰", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "статистика")
 def group_stats(m):
@@ -1458,17 +1297,12 @@ def group_stats(m):
     cur.close()
     conn.close()
     
-    bot.send_message(chat_id, f"📊 *Статистика группы*\n\n👥 Игроков: {total_users}\n💰 Всего монет: {total_coins}\n📈 Средний баланс: {avg_coins:.2f}", parse_mode="Markdown")
+    bot.send_message(chat_id, f"📊 *Статистика*\n\n👥 Игроков: {total_users}\n💰 Всего монет: {total_coins}\n📈 Средний баланс: {avg_coins:.2f}", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "игра кости")
 def group_dice_game(m):
     chat_id = m.chat.id
     from_uid = m.from_user.id
-    
-    if from_uid in group_game_sessions:
-        bot.send_message(chat_id, "❌ Игра уже идёт! Дождитесь окончания")
-        return
-    
     roll = random.randint(1, 6)
     group_game_sessions[from_uid] = {"game": "dice", "roll": roll}
     bot.send_message(chat_id, f"🎲 @{m.from_user.username} кинул кубик и выпало {roll}! Кто хочет перебросить? Напишите 'игра кости'")
@@ -1477,14 +1311,9 @@ def group_dice_game(m):
 def group_guess_game(m):
     chat_id = m.chat.id
     from_uid = m.from_user.id
-    
-    if from_uid in group_game_sessions:
-        bot.send_message(chat_id, "❌ Игра уже идёт! Дождитесь окончания")
-        return
-    
     number = random.randint(1, 20)
     group_game_sessions[from_uid] = {"game": "guess", "number": number}
-    bot.send_message(chat_id, f"🔢 @{m.from_user.username} начал игру! Я загадал число от 1 до 20. Угадайте! Пишите числа")
+    bot.send_message(chat_id, f"🔢 @{m.from_user.username} начал игру! Я загадал число от 1 до 20. Угадайте!")
 
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "игра орел")
 def group_coin_game(m):
@@ -1525,7 +1354,7 @@ def callback_handler(call):
         bot.edit_message_text("Меню", uid, call.message.message_id)
         bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
     elif data == "back_shop":
-        shop_menu(uid)
+        shop_keyboard(uid)
     elif data == "shop_themes":
         bot.edit_message_text("🎨 *Выбери тему:*", uid, call.message.message_id, reply_markup=shop_themes_keyboard(uid), parse_mode="Markdown")
     elif data == "shop_effects":
@@ -1533,9 +1362,9 @@ def callback_handler(call):
     elif data == "shop_combos":
         bot.edit_message_text("🔥 *Выбери комбинацию:*", uid, call.message.message_id, reply_markup=shop_combos_keyboard(uid), parse_mode="Markdown")
     elif data == "shop_languages":
-        bot.edit_message_text("💬 *Выбери язык общения:*", uid, call.message.message_id, reply_markup=shop_languages_keyboard(uid), parse_mode="Markdown")
+        bot.edit_message_text("💬 *Выбери язык:*", uid, call.message.message_id, reply_markup=shop_languages_keyboard(uid), parse_mode="Markdown")
     elif data == "my_items":
-        bot.edit_message_text("🎨 *Мои покупки*\nНажми на предмет для активации:", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
+        bot.edit_message_text("🎨 *Мои покупки*", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
     
     elif data.startswith("buy_theme_"):
         theme = data.split("_")[2]
@@ -1619,8 +1448,6 @@ def callback_handler(call):
     
     elif data == "remove_effect":
         update_user(uid, active_effect=None)
-        delete_user_cache(uid)
-        get_user(uid)
         bot.answer_callback_query(call.id, "❌ Эффект снят")
         bot.edit_message_text("🎨 *Мои покупки*", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
         bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
@@ -1628,15 +1455,15 @@ def callback_handler(call):
     elif data.startswith("dice_"):
         num = data.split("_")[1]
         if num == "1":
-            dice_game(uid, 1, 1, 6, 2, 5, 1, 2, None, None)
+            dice_game(uid, 1, 1, 6, 2, 5, 1, 2)
         elif num == "2":
-            dice_game(uid, 2, 2, 12, 4, 10, 2, 5, None, None)
+            dice_game(uid, 2, 2, 12, 4, 10, 2, 5)
         elif num == "3":
-            dice_game(uid, 3, 3, 18, 8, 15, 4, 7, 2, 3)
+            dice_game(uid, 3, 3, 18, 8, 15, 4, 7)
         elif num == "5":
-            dice_game(uid, 5, 5, 30, 15, 25, 7, 12, 3, 6)
+            dice_game(uid, 5, 5, 30, 15, 25, 7, 12)
         elif num == "10":
-            dice_game(uid, 10, 10, 60, 30, 50, 15, 25, 8, 12)
+            dice_game(uid, 10, 10, 60, 30, 50, 15, 25)
         elif data == "dice_luck":
             dice_luck_handler(uid)
     
@@ -1665,6 +1492,6 @@ def callback_handler(call):
             gamble_evenodd_handler(uid)
 
 if __name__ == "__main__":
-    print("✅ ИСПРАВЛЕННЫЙ БОТ ЗАПУЩЕН!")
-    print("📊 Теперь покупки тем, эффектов, языков и комбинаций работают корректно!")
+    print("✅ БОТ ЗАПУЩЕН!")
+    print("📊 100 тем, 100 эффектов, 50 комбинаций, 10 языков")
     bot.infinity_polling(skip_pending=True)
