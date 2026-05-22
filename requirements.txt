@@ -2,3 +2,4 @@ pytelegrambotapi
 requests
 psycopg2-binary
 cachetools
+redis
