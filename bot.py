@@ -87,7 +87,7 @@ def init_db():
 
 init_db()
 
-# ========== ТЕМЫ (200 штук) ==========
+# ========== ТЕМЫ ==========
 THEMES = {
     "🎲": "Классика", "🌌": "Космос", "🔥": "Огонь", "💎": "Драгоценности",
     "👾": "Ретро", "🎭": "Маскарад", "👑": "Королевская", "🌙": "Мистическая",
@@ -142,7 +142,7 @@ for i, emoji in enumerate(THEMES.keys()):
     else:
         THEMES_PRICE[emoji] = random.randint(50, 300)
 
-# ========== ЭФФЕКТЫ (200 штук) ==========
+# ========== ЭФФЕКТЫ ==========
 EFFECTS = {
     "⚡": "Молния", "🌟": "Звезда", "💫": "Комета", "🌀": "Вихрь",
     "🎪": "Цирк", "🏆": "Победитель", "🌈": "Радуга", "💡": "Неон",
@@ -179,7 +179,7 @@ for i, emoji in enumerate(EFFECTS.keys()):
     else:
         EFFECTS_PRICE[emoji] = random.randint(30, 200)
 
-# ========== КОМБИНАЦИИ (100 штук) ==========
+# ========== КОМБИНАЦИИ ==========
 COMBOS = {}
 COMBOS_PRICE = {}
 
@@ -208,7 +208,7 @@ for combo, name, price in combo_list:
     COMBOS[combo] = name
     COMBOS_PRICE[combo] = price
 
-# ========== ЯЗЫКИ (20 штук) ==========
+# ========== ЯЗЫКИ ==========
 LANGUAGES = {
     "normal": "Обычный",
     "royal": "👑 Королевский",
@@ -323,18 +323,33 @@ def get_phrase(lang, phrase_key):
         return phrases["normal"].get(phrase_key, "")
     return phrases[lang].get(phrase_key, phrases["normal"].get(phrase_key, ""))
 
-# ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+# ========== ИСПРАВЛЕННЫЕ ФУНКЦИИ ПОКУПОК ==========
 def add_owned_theme(uid, theme):
     user = get_user(uid)
     owned = user.get("owned_themes", "🎲")
     if theme not in owned:
-        update_user(uid, owned_themes=owned + theme)
+        new_owned = owned + theme
+        update_user(uid, owned_themes=new_owned)
+        delete_user_cache(uid)
+        get_user(uid)
 
 def add_owned_effect(uid, effect):
     user = get_user(uid)
     owned = user.get("owned_effects", "")
     if effect not in owned:
-        update_user(uid, owned_effects=owned + effect)
+        new_owned = owned + effect
+        update_user(uid, owned_effects=new_owned)
+        delete_user_cache(uid)
+        get_user(uid)
+
+def add_owned_language(uid, lang):
+    user = get_user(uid)
+    owned = user.get("owned_languages", "normal")
+    if lang not in owned:
+        new_owned = owned + "," + lang
+        update_user(uid, owned_languages=new_owned)
+        delete_user_cache(uid)
+        get_user(uid)
 
 def add_owned_combo(uid, combo):
     user = get_user(uid)
@@ -342,34 +357,55 @@ def add_owned_combo(uid, combo):
     if combo not in owned_combos:
         new_combos = owned_combos + "," + combo if owned_combos else combo
         update_user(uid, owned_combos=new_combos)
+        delete_user_cache(uid)
+        get_user(uid)
     if len(combo) >= 2:
         add_owned_theme(uid, combo[0])
         add_owned_effect(uid, combo[1])
 
-def add_owned_language(uid, lang):
-    user = get_user(uid)
-    owned = user.get("owned_languages", "normal")
-    if lang not in owned:
-        update_user(uid, owned_languages=owned + "," + lang)
-
 def set_active_theme(uid, theme):
-    if theme in get_user(uid).get("owned_themes", "🎲"):
+    user = get_user(uid)
+    owned = user.get("owned_themes", "🎲")
+    if theme in owned:
         update_user(uid, active_theme=theme)
+        delete_user_cache(uid)
+        get_user(uid)
+        return True
+    return False
 
 def set_active_effect(uid, effect):
-    if effect in get_user(uid).get("owned_effects", ""):
+    user = get_user(uid)
+    owned = user.get("owned_effects", "")
+    if effect in owned:
         update_user(uid, active_effect=effect)
+        delete_user_cache(uid)
+        get_user(uid)
+        return True
+    return False
+
+def set_active_language(uid, lang):
+    user = get_user(uid)
+    owned = user.get("owned_languages", "normal")
+    if lang == "normal" or lang in owned:
+        update_user(uid, active_language=lang)
+        delete_user_cache(uid)
+        get_user(uid)
+        return True
+    return False
 
 def set_active_combo(uid, combo):
-    if combo in get_user(uid).get("owned_combos", ""):
+    user = get_user(uid)
+    owned_combos = user.get("owned_combos", "")
+    if combo in owned_combos:
         if len(combo) >= 2:
             set_active_theme(uid, combo[0])
             set_active_effect(uid, combo[1])
+        delete_user_cache(uid)
+        get_user(uid)
+        return True
+    return False
 
-def set_active_language(uid, lang):
-    if lang == "normal" or lang in get_user(uid).get("owned_languages", "normal"):
-        update_user(uid, active_language=lang)
-
+# ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
 def get_user(uid):
     uid = str(uid)
     cached = get_user_cache(uid)
@@ -415,12 +451,13 @@ def update_user(uid, **kwargs):
     conn.commit()
     cur.close()
     conn.close()
-    delete_user_cache(uid)
 
 def add_coins(uid, amount):
     user = get_user(uid)
     new_coins = user["coins"] + amount
     update_user(uid, coins=new_coins)
+    delete_user_cache(uid)
+    get_user(uid)
     return new_coins
 
 def remove_coins(uid, amount):
@@ -428,6 +465,8 @@ def remove_coins(uid, amount):
     if user["coins"] >= amount:
         new_coins = user["coins"] - amount
         update_user(uid, coins=new_coins)
+        delete_user_cache(uid)
+        get_user(uid)
         return True
     return False
 
@@ -703,7 +742,6 @@ def start(m):
     
     bot.send_message(uid, f"{get_phrase(lang, 'welcome')}\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
 
-# ========== РЕГИОН ==========
 @bot.message_handler(func=lambda m: m.text == "📍 Мой регион")
 def choose_region(m):
     uid = m.chat.id
@@ -714,169 +752,11 @@ def save_region(m):
     uid = m.chat.id
     region = m.text
     update_user(uid, region=region)
+    delete_user_cache(uid)
+    get_user(uid)
     bot.send_message(uid, f"✅ Регион *{region}* сохранён!", parse_mode="Markdown")
     bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
 
-# ========== ПРОФИЛЬ И ПОИСК ==========
-@bot.message_handler(func=lambda m: m.text == "👤 Профиль" or get_phrase(get_user(m.chat.id).get("active_language", "normal"), "profile") in m.text)
-def my_profile(m):
-    uid = m.chat.id
-    bot.send_message(uid, format_profile(uid), parse_mode="Markdown")
-
-@bot.message_handler(func=lambda m: m.text == "🔍 Найти игрока" or get_phrase(get_user(m.chat.id).get("active_language", "normal"), "find") in m.text)
-def find_player(m):
-    uid = m.chat.id
-    bot.send_message(uid, "✍️ Введи @username игрока:")
-    waiting_for_username[uid] = True
-
-@bot.message_handler(func=lambda m: waiting_for_username.get(m.chat.id, False))
-def process_find_player(m):
-    uid = m.chat.id
-    username = m.text.strip().replace("@", "")
-    target_uid = get_user_by_username(username)
-    
-    if target_uid:
-        bot.send_message(uid, format_profile(uid, target_uid), parse_mode="Markdown")
-    else:
-        bot.send_message(uid, f"❌ Игрок @{username} не найден", parse_mode="Markdown")
-    
-    waiting_for_username[uid] = False
-
-@bot.message_handler(func=lambda m: m.text == "📋 Все команды" or get_phrase(get_user(m.chat.id).get("active_language", "normal"), "commands") in m.text)
-def show_commands(m):
-    uid = m.chat.id
-    bot.send_message(uid, commands_list(uid), parse_mode="Markdown")
-
-# ========== РЕФЕРАЛКА ==========
-def get_referral_link(uid):
-    bot_info = bot.get_me()
-    return f"https://t.me/{bot_info.username}?start=ref_{uid}"
-
-def process_referral(new_uid, referrer_id):
-    if str(new_uid) == str(referrer_id):
-        return False
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM referrals WHERE user_id = %s", (str(new_uid),))
-    if cur.fetchone():
-        cur.close()
-        conn.close()
-        return False
-    cur.execute("INSERT INTO referrals (user_id, referrer_id) VALUES (%s, %s)", (str(new_uid), str(referrer_id)))
-    add_coins(new_uid, 5)
-    add_coins(referrer_id, 10)
-    conn.commit()
-    cur.close()
-    conn.close()
-    return True
-
-def get_referral_stats(uid):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id = %s", (str(uid),))
-    count = cur.fetchone()[0]
-    cur.close()
-    conn.close()
-    return count
-
-# ========== ЗАДАНИЯ ==========
-TASKS = [
-    {"name": "🎲 1 кубик", "reward": 5, "game": "dice1"},
-    {"name": "🎲🎲 2 кубика", "reward": 5, "game": "dice2"},
-    {"name": "🎲🎲🎲 3 кубика", "reward": 8, "game": "dice3"},
-    {"name": "🎲🎲🎲🎲🎲 5 кубиков", "reward": 10, "game": "dice5"},
-    {"name": "🎲 x10 10 кубиков", "reward": 15, "game": "dice10"},
-    {"name": "🎲💰 Кости на удачу", "reward": 12, "game": "diceluck"},
-    {"name": "🔢 Угадай число", "reward": 5, "game": "number"},
-    {"name": "✂️ Камень-ножницы", "reward": 5, "game": "rps"},
-    {"name": "🎴 Карты и Джокер", "reward": 10, "game": "cards"},
-    {"name": "🎰 Слоты", "reward": 10, "game": "slots"},
-    {"name": "💎 Камень-мешок-монета", "reward": 5, "game": "rps2"},
-    {"name": "🎯 Угадай цвет", "reward": 5, "game": "color"},
-    {"name": "📈 Выше/Ниже", "reward": 8, "game": "highlow"},
-    {"name": "🔫 Русская рулетка", "reward": 20, "game": "roulette"},
-    {"name": "🔥 Горячо/Холодно", "reward": 15, "game": "hotcold"},
-    {"name": "🎯 Быки и коровы", "reward": 20, "game": "bullscows"},
-    {"name": "🎲 Чет/Нечет", "reward": 8, "game": "evenodd"}
-]
-
-def get_random_task():
-    return random.choice(TASKS)
-
-def get_user_task(uid):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT daily_task, task_completed, task_reward_taken FROM users WHERE user_id = %s", (str(uid),))
-    result = cur.fetchone()
-    cur.close()
-    conn.close()
-    
-    if result and result[0]:
-        return {"name": result[0], "completed": result[1], "reward_taken": result[2]}
-    else:
-        task = get_random_task()
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE users SET daily_task = %s, task_completed = FALSE, task_reward_taken = FALSE WHERE user_id = %s", (task["name"], str(uid)))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return {"name": task["name"], "completed": False, "reward_taken": False}
-
-def complete_task(uid, game_name):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT daily_task, task_completed, task_reward_taken FROM users WHERE user_id = %s", (str(uid),))
-    result = cur.fetchone()
-    if result and not result[1] and not result[2]:
-        task_name = result[0]
-        for task in TASKS:
-            if task["name"] == task_name:
-                if task["game"] == game_name:
-                    cur.execute("UPDATE users SET task_completed = TRUE WHERE user_id = %s", (str(uid),))
-                    conn.commit()
-                    cur.close()
-                    conn.close()
-                    return True
-    cur.close()
-    conn.close()
-    return False
-
-def take_task_reward(uid):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT task_completed, task_reward_taken, daily_task FROM users WHERE user_id = %s", (str(uid),))
-    result = cur.fetchone()
-    if result and result[0] and not result[1]:
-        task_name = result[2]
-        reward = 0
-        for task in TASKS:
-            if task["name"] == task_name:
-                reward = task["reward"]
-                break
-        if reward > 0:
-            add_coins(uid, reward)
-            cur.execute("UPDATE users SET task_reward_taken = TRUE WHERE user_id = %s", (str(uid),))
-            conn.commit()
-            cur.close()
-            conn.close()
-            return reward
-    cur.close()
-    conn.close()
-    return 0
-
-@bot.message_handler(commands=['take_reward'])
-def take_reward(m):
-    uid = m.chat.id
-    reward = take_task_reward(uid)
-    lang = get_user(uid).get("active_language", "normal")
-    if reward > 0:
-        bot.send_message(uid, f"🎁 Ты получил {reward}💰 за выполнение задания!")
-        bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
-    else:
-        bot.send_message(uid, "❌ Задание ещё не выполнено или награда уже получена!")
-
-# ========== ОСНОВНОЙ ОБРАБОТЧИК ==========
 @bot.message_handler(func=lambda m: True)
 def handle_buttons(m):
     uid = m.chat.id
@@ -898,6 +778,8 @@ def handle_buttons(m):
         if can_take_bonus(uid):
             add_coins(uid, 10)
             update_user(uid, last_bonus=datetime.now().isoformat())
+            delete_user_cache(uid)
+            get_user(uid)
             bot.send_message(uid, get_phrase(lang, "bonus"), parse_mode="Markdown")
         else:
             bot.send_message(uid, get_phrase(lang, "already_bonus"), parse_mode="Markdown")
@@ -1054,7 +936,7 @@ def dice_luck_handler(uid):
         bot.send_message(uid, f"🎲💰 {rolls_str} = {total}. {get_phrase(lang, 'lose').format(2)}")
     complete_task(uid, "diceluck")
 
-# ========== НОВАЯ ИГРА: ЧЕТ/НЕЧЕТ (ВМЕСТО ОРАКУЛА) ==========
+# ========== НОВАЯ ИГРА: ЧЕТ/НЕЧЕТ ==========
 def gamble_evenodd_handler(uid):
     bot.send_message(uid, "🎲 *Чет/Нечет*\nЯ загадал число от 1 до 10. Угадай, оно *чётное* или *нечётное*?", parse_mode="Markdown")
     bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_evenodd_play(m, uid))
@@ -1356,6 +1238,135 @@ def gamble_bullscows_play(m, uid):
         bot.send_message(uid, f"🐂 Быки: {bulls}, 🐄 Коровы: {cows}\nПопробуй ещё раз:")
         bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_bullscows_play(m, uid))
 
+# ========== ЗАДАНИЯ ==========
+TASKS = [
+    {"name": "🎲 1 кубик", "reward": 5, "game": "dice1"},
+    {"name": "🎲🎲 2 кубика", "reward": 5, "game": "dice2"},
+    {"name": "🎲🎲🎲 3 кубика", "reward": 8, "game": "dice3"},
+    {"name": "🎲🎲🎲🎲🎲 5 кубиков", "reward": 10, "game": "dice5"},
+    {"name": "🎲 x10 10 кубиков", "reward": 15, "game": "dice10"},
+    {"name": "🎲💰 Кости на удачу", "reward": 12, "game": "diceluck"},
+    {"name": "🔢 Угадай число", "reward": 5, "game": "number"},
+    {"name": "✂️ Камень-ножницы", "reward": 5, "game": "rps"},
+    {"name": "🎴 Карты и Джокер", "reward": 10, "game": "cards"},
+    {"name": "🎰 Слоты", "reward": 10, "game": "slots"},
+    {"name": "💎 Камень-мешок-монета", "reward": 5, "game": "rps2"},
+    {"name": "🎯 Угадай цвет", "reward": 5, "game": "color"},
+    {"name": "📈 Выше/Ниже", "reward": 8, "game": "highlow"},
+    {"name": "🔫 Русская рулетка", "reward": 20, "game": "roulette"},
+    {"name": "🔥 Горячо/Холодно", "reward": 15, "game": "hotcold"},
+    {"name": "🎯 Быки и коровы", "reward": 20, "game": "bullscows"},
+    {"name": "🎲 Чет/Нечет", "reward": 8, "game": "evenodd"}
+]
+
+def get_random_task():
+    return random.choice(TASKS)
+
+def get_user_task(uid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT daily_task, task_completed, task_reward_taken FROM users WHERE user_id = %s", (str(uid),))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if result and result[0]:
+        return {"name": result[0], "completed": result[1], "reward_taken": result[2]}
+    else:
+        task = get_random_task()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET daily_task = %s, task_completed = FALSE, task_reward_taken = FALSE WHERE user_id = %s", (task["name"], str(uid)))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"name": task["name"], "completed": False, "reward_taken": False}
+
+def complete_task(uid, game_name):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT daily_task, task_completed, task_reward_taken FROM users WHERE user_id = %s", (str(uid),))
+    result = cur.fetchone()
+    if result and not result[1] and not result[2]:
+        task_name = result[0]
+        for task in TASKS:
+            if task["name"] == task_name:
+                if task["game"] == game_name:
+                    cur.execute("UPDATE users SET task_completed = TRUE WHERE user_id = %s", (str(uid),))
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                    return True
+    cur.close()
+    conn.close()
+    return False
+
+def take_task_reward(uid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT task_completed, task_reward_taken, daily_task FROM users WHERE user_id = %s", (str(uid),))
+    result = cur.fetchone()
+    if result and result[0] and not result[1]:
+        task_name = result[2]
+        reward = 0
+        for task in TASKS:
+            if task["name"] == task_name:
+                reward = task["reward"]
+                break
+        if reward > 0:
+            add_coins(uid, reward)
+            cur.execute("UPDATE users SET task_reward_taken = TRUE WHERE user_id = %s", (str(uid),))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return reward
+    cur.close()
+    conn.close()
+    return 0
+
+@bot.message_handler(commands=['take_reward'])
+def take_reward(m):
+    uid = m.chat.id
+    reward = take_task_reward(uid)
+    lang = get_user(uid).get("active_language", "normal")
+    if reward > 0:
+        bot.send_message(uid, f"🎁 Ты получил {reward}💰 за выполнение задания!")
+        bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
+    else:
+        bot.send_message(uid, "❌ Задание ещё не выполнено или награда уже получена!")
+
+# ========== РЕФЕРАЛКА ==========
+def get_referral_link(uid):
+    bot_info = bot.get_me()
+    return f"https://t.me/{bot_info.username}?start=ref_{uid}"
+
+def process_referral(new_uid, referrer_id):
+    if str(new_uid) == str(referrer_id):
+        return False
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM referrals WHERE user_id = %s", (str(new_uid),))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return False
+    cur.execute("INSERT INTO referrals (user_id, referrer_id) VALUES (%s, %s)", (str(new_uid), str(referrer_id)))
+    add_coins(new_uid, 5)
+    add_coins(referrer_id, 10)
+    conn.commit()
+    cur.close()
+    conn.close()
+    return True
+
+def get_referral_stats(uid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id = %s", (str(uid),))
+    count = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return count
+
 # ========== ГРУППОВЫЕ КОМАНДЫ ==========
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "команды")
 def group_commands(m):
@@ -1533,6 +1544,7 @@ def callback_handler(call):
             add_owned_theme(uid, theme)
             bot.answer_callback_query(call.id, f"✅ Тема {THEMES[theme]} куплена!")
             bot.edit_message_text("🎨 *Выбери тему:*", uid, call.message.message_id, reply_markup=shop_themes_keyboard(uid), parse_mode="Markdown")
+            bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
         else:
             bot.answer_callback_query(call.id, "❌ Нет монет")
     
@@ -1543,16 +1555,7 @@ def callback_handler(call):
             add_owned_effect(uid, effect)
             bot.answer_callback_query(call.id, f"✅ Эффект {EFFECTS[effect]} куплен!")
             bot.edit_message_text("✨ *Выбери эффект:*", uid, call.message.message_id, reply_markup=shop_effects_keyboard(uid), parse_mode="Markdown")
-        else:
-            bot.answer_callback_query(call.id, "❌ Нет монет")
-    
-    elif data.startswith("buy_combo_"):
-        combo = data.split("_")[2]
-        price = COMBOS_PRICE.get(combo, 500)
-        if remove_coins(uid, price):
-            add_owned_combo(uid, combo)
-            bot.answer_callback_query(call.id, f"✅ Комбинация {COMBOS[combo]} куплена!")
-            bot.edit_message_text("🔥 *Выбери комбинацию:*", uid, call.message.message_id, reply_markup=shop_combos_keyboard(uid), parse_mode="Markdown")
+            bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
         else:
             bot.answer_callback_query(call.id, "❌ Нет монет")
     
@@ -1563,13 +1566,24 @@ def callback_handler(call):
             add_owned_language(uid, lang)
             bot.answer_callback_query(call.id, f"✅ Язык {LANGUAGES[lang]} куплен!")
             bot.edit_message_text("💬 *Выбери язык:*", uid, call.message.message_id, reply_markup=shop_languages_keyboard(uid), parse_mode="Markdown")
+            bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
+        else:
+            bot.answer_callback_query(call.id, "❌ Нет монет")
+    
+    elif data.startswith("buy_combo_"):
+        combo = data.split("_")[2]
+        price = COMBOS_PRICE.get(combo, 500)
+        if remove_coins(uid, price):
+            add_owned_combo(uid, combo)
+            bot.answer_callback_query(call.id, f"✅ Комбинация {COMBOS[combo]} куплена!")
+            bot.edit_message_text("🔥 *Выбери комбинацию:*", uid, call.message.message_id, reply_markup=shop_combos_keyboard(uid), parse_mode="Markdown")
+            bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
         else:
             bot.answer_callback_query(call.id, "❌ Нет монет")
     
     elif data.startswith("set_theme_"):
         theme = data.split("_")[2]
-        if theme in get_user(uid).get("owned_themes", "🎲"):
-            set_active_theme(uid, theme)
+        if set_active_theme(uid, theme):
             bot.answer_callback_query(call.id, f"✅ Тема {THEMES[theme]} активирована!")
             bot.edit_message_text("🎨 *Мои покупки*", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
             bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
@@ -1578,8 +1592,7 @@ def callback_handler(call):
     
     elif data.startswith("set_effect_"):
         effect = data.split("_")[2]
-        if effect in get_user(uid).get("owned_effects", ""):
-            set_active_effect(uid, effect)
+        if set_active_effect(uid, effect):
             bot.answer_callback_query(call.id, f"✅ Эффект {EFFECTS[effect]} активирован!")
             bot.edit_message_text("🎨 *Мои покупки*", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
             bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
@@ -1588,8 +1601,7 @@ def callback_handler(call):
     
     elif data.startswith("set_combo_"):
         combo = data.split("_")[2]
-        if combo in get_user(uid).get("owned_combos", ""):
-            set_active_combo(uid, combo)
+        if set_active_combo(uid, combo):
             bot.answer_callback_query(call.id, f"✅ Комбинация {COMBOS[combo]} активирована!")
             bot.edit_message_text("🎨 *Мои покупки*", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
             bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
@@ -1598,8 +1610,7 @@ def callback_handler(call):
     
     elif data.startswith("set_language_"):
         lang = data.split("_")[2]
-        if lang == "normal" or lang in get_user(uid).get("owned_languages", "normal"):
-            set_active_language(uid, lang)
+        if set_active_language(uid, lang):
             bot.answer_callback_query(call.id, f"✅ Язык {LANGUAGES[lang]} активирован!")
             bot.edit_message_text("🎨 *Мои покупки*", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
             bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
@@ -1608,6 +1619,8 @@ def callback_handler(call):
     
     elif data == "remove_effect":
         update_user(uid, active_effect=None)
+        delete_user_cache(uid)
+        get_user(uid)
         bot.answer_callback_query(call.id, "❌ Эффект снят")
         bot.edit_message_text("🎨 *Мои покупки*", uid, call.message.message_id, reply_markup=my_items_keyboard(uid), parse_mode="Markdown")
         bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
@@ -1652,6 +1665,6 @@ def callback_handler(call):
             gamble_evenodd_handler(uid)
 
 if __name__ == "__main__":
-    print("✅ ФИНАЛЬНАЯ ВЕРСИЯ БОТА ЗАПУЩЕНА!")
-    print(f"📊 Статистика: 200 тем, 200 эффектов, 100 комбинаций, 20 языков, 20 игр")
+    print("✅ ИСПРАВЛЕННЫЙ БОТ ЗАПУЩЕН!")
+    print("📊 Теперь покупки тем, эффектов, языков и комбинаций работают корректно!")
     bot.infinity_polling(skip_pending=True)
