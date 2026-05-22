@@ -41,7 +41,7 @@ def set_user_cache(uid, user_data):
 def delete_user_cache(uid):
     r.delete(f"user:{uid}")
 
-# ========== БАЗА ДАННЫХ ==========
+# ========== БАЗА ДАННЫХ С МИГРАЦИЕЙ ==========
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
@@ -58,10 +58,7 @@ def init_db():
             current_game TEXT,
             theme TEXT DEFAULT '🎲',
             effect TEXT,
-            referrer TEXT,
-            daily_task TEXT,
-            task_completed BOOLEAN DEFAULT FALSE,
-            task_reward_taken BOOLEAN DEFAULT FALSE
+            referrer TEXT
         )
     """)
     cur.execute("""
@@ -75,7 +72,21 @@ def init_db():
     cur.close()
     conn.close()
 
+def migrate_db():
+    """Добавляет новые колонки для заданий, если их нет"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_task TEXT")
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS task_completed BOOLEAN DEFAULT FALSE")
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS task_reward_taken BOOLEAN DEFAULT FALSE")
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("✅ База данных обновлена (добавлены колонки для заданий)")
+
+# Запускаем создание таблиц и миграцию
 init_db()
+migrate_db()
 
 # ========== ЕЖЕДНЕВНЫЕ ЗАДАНИЯ ==========
 TASKS = [
@@ -214,8 +225,8 @@ def get_user(uid):
     user = cur.fetchone()
     if not user:
         cur.execute("""
-            INSERT INTO users (user_id, coins, last_bonus, username, region, current_game, theme, effect, referrer, daily_task, task_completed, task_reward_taken)
-            VALUES (%s, 5, NULL, NULL, NULL, NULL, '🎲', NULL, NULL, NULL, FALSE, FALSE)
+            INSERT INTO users (user_id, coins, last_bonus, username, region, current_game, theme, effect, referrer)
+            VALUES (%s, 5, NULL, NULL, NULL, NULL, '🎲', NULL, NULL)
         """, (uid,))
         conn.commit()
         cur.execute("SELECT * FROM users WHERE user_id = %s", (uid,))
@@ -354,7 +365,7 @@ def start(m):
     
     bot.send_message(uid, f"🎉 *Добро пожаловать в игровой портал!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
 
-# ========== ВЫБОР РЕГИОНА (свободный, без принуждения) ==========
+# ========== ВЫБОР РЕГИОНА ==========
 @bot.message_handler(func=lambda m: m.text == "📍 Мой регион")
 def choose_region(m):
     uid = m.chat.id
@@ -945,5 +956,5 @@ def callback_handler(call):
         tictac_move(uid, int(i), int(j))
 
 if __name__ == "__main__":
-    print("✅ Бот с выбором региона и статистикой по региону запущен")
+    print("✅ Бот с миграцией запущен")
     bot.infinity_polling(skip_pending=True)
