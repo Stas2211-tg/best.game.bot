@@ -1,15 +1,13 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 import random
-import requests
 import json
 import os
 from datetime import datetime, timedelta
 
-# ========== ТОКЕН ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ==========
 TOKEN = os.getenv("TOKEN")
-if TOKEN is None:
-    print("❌ ОШИБКА: Токен не найден! Добавь переменную TOKEN в Railway")
+if not TOKEN:
+    print("❌ Токен не найден")
     exit(1)
 
 ADMIN_ID = 6615344173  # ЗАМЕНИ НА СВОЙ TELEGRAM ID
@@ -17,7 +15,6 @@ ADMIN_ID = 6615344173  # ЗАМЕНИ НА СВОЙ TELEGRAM ID
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "user_data.json"
 
-# ========== РАБОТА С ДАННЫМИ ==========
 def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -29,373 +26,666 @@ def save_data():
         json.dump(user_data, f, ensure_ascii=False, indent=2)
 
 user_data = load_data()
-waiting_for_message = {}
+waiting_for_question = {}
+games_data = {}
 
-# ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-def get_user(user_id):
-    user_id = str(user_id)
-    if user_id not in user_data:
-        user_data[user_id] = {
+REGIONS = ["🌍 Европа", "🌏 Азия", "🌎 Америка", "🇷🇺 Россия", "🌏 Другие"]
+
+def region_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    kb.add(*[KeyboardButton(r) for r in REGIONS])
+    return kb
+
+def get_user(uid):
+    uid = str(uid)
+    if uid not in user_data:
+        user_data[uid] = {
             "coins": 5,
             "last_bonus": None,
-            "game": None,
-            "number": None,
-            "hangman": None,
             "username": None,
-            "total_donated": 0
+            "region": None,
+            "current_game": None,
+            "theme": "🎲",
+            "effect": None
         }
         save_data()
-    return user_data[user_id]
+    return user_data[uid]
 
-def add_coins(user_id, amount):
-    user = get_user(user_id)
-    user["coins"] += amount
+def add_coins(uid, amount):
+    u = get_user(uid)
+    u["coins"] += amount
     save_data()
-    return user["coins"]
 
-def remove_coins(user_id, amount):
-    user = get_user(user_id)
-    if user["coins"] >= amount:
-        user["coins"] -= amount
+def remove_coins(uid, amount):
+    u = get_user(uid)
+    if u["coins"] >= amount:
+        u["coins"] -= amount
         save_data()
         return True
     return False
 
-def can_take_bonus(user_id):
-    user = get_user(user_id)
-    if user["last_bonus"] is None:
+def can_take_bonus(uid):
+    u = get_user(uid)
+    if not u["last_bonus"]:
         return True
-    last = datetime.fromisoformat(user["last_bonus"])
+    last = datetime.fromisoformat(u["last_bonus"])
     return datetime.now() - last >= timedelta(hours=24)
 
-# ========== КЛАВИАТУРЫ ==========
-def main_keyboard():
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    keyboard.add(
-        KeyboardButton("🎮 Игры"),
-        KeyboardButton("🎲 Рандом"),
-        KeyboardButton("📱 Мои соцсети"),
-        KeyboardButton("❓ Задать вопрос"),
-        KeyboardButton("💰 Курс валют"),
-        KeyboardButton("😄 Анекдот"),
-        KeyboardButton("🎁 Ежедневный бонус"),
-        KeyboardButton("💰 Мой баланс"),
-        KeyboardButton("💸 Перевести монеты")
-    )
-    return keyboard
+def all_users_list():
+    return list(user_data.keys())
 
-def games_keyboard():
-    keyboard = InlineKeyboardMarkup(row_width=2)
-    keyboard.add(
-        InlineKeyboardButton("🔢 Угадай число (1💰)", callback_data="guess_number"),
-        InlineKeyboardButton("✂️ Камень-ножницы (1💰)", callback_data="rps"),
-        InlineKeyboardButton("🎲 Один кубик (1💰)", callback_data="dice"),
-        InlineKeyboardButton("🎲🎲 Два кубика (1💰)", callback_data="two_dice"),
-        InlineKeyboardButton("🔮 Оракул (1💰)", callback_data="oracle"),
-        InlineKeyboardButton("📝 Виселица (1💰)", callback_data="hangman"),
-        InlineKeyboardButton("❌ Выйти", callback_data="exit_games")
-    )
-    return keyboard
+def global_stats():
+    users = user_data.values()
+    total_coins = sum(u["coins"] for u in users)
+    total_users = len(users)
+    avg = total_coins / total_users if total_users else 0
+    top = sorted(user_data.items(), key=lambda x: x[1]["coins"], reverse=True)[:10]
+    top_text = "\n".join([f"{i+1}. {u[1].get('username', u[0])} — {u[1]['coins']}💰" for i, u in enumerate(top)])
+    return total_users, total_coins, avg, top_text
 
-# ========== КОМАНДА /start ==========
+def region_stats():
+    stats = {r: {"users": 0, "coins": 0} for r in REGIONS}
+    for uid, data in user_data.items():
+        reg = data.get("region")
+        if reg in stats:
+            stats[reg]["users"] += 1
+            stats[reg]["coins"] += data["coins"]
+    return stats
+
+def active_players():
+    active = []
+    for uid, data in user_data.items():
+        if data.get("current_game"):
+            active.append((uid, data["current_game"]))
+    return active
+
+def format_profile(uid):
+    user = get_user(uid)
+    return (
+        f"┌─────────────────────┐\n"
+        f"│  👤 *{user.get('username', 'Игрок')}*\n"
+        f"│  💰 Баланс: `{user['coins']}` монет\n"
+        f"│  📍 Регион: {user.get('region', '❓')}\n"
+        f"│  🎮 Играет: {user.get('current_game') or 'нет'}\n"
+        f"└─────────────────────┘"
+    )
+
+def main_keyboard(uid):
+    user = get_user(uid)
+    theme = user.get("theme", "🎲")
+    kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    kb.add(
+        KeyboardButton(f"🎲 Игры на монеты"),
+        KeyboardButton(f"💣 Сапёр (Мина)"),
+        KeyboardButton(f"❌⭕ Крестики-нолики"),
+        KeyboardButton(f"🛒 Магазин"),
+        KeyboardButton(f"📊 Моя статистика"),
+        KeyboardButton(f"🎁 Бонус"),
+        KeyboardButton(f"❓ Вопрос")
+    )
+    if uid == ADMIN_ID:
+        kb.add(KeyboardButton(f"🔧 Админ"))
+    return kb
+
+def admin_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    kb.add(
+        KeyboardButton("💰 Выдать монеты"),
+        KeyboardButton("🔻 Забрать монеты"),
+        KeyboardButton("👥 Все пользователи"),
+        KeyboardButton("📢 Рассылка"),
+        KeyboardButton("📊 Глобальная статистика"),
+        KeyboardButton("🎮 Активные игроки"),
+        KeyboardButton("🔙 Назад")
+    )
+    return kb
+
 @bot.message_handler(commands=['start'])
-def start(message):
-    user_id = message.chat.id
-    user = get_user(user_id)
-    
-    if message.from_user.username:
-        user["username"] = message.from_user.username.lower()
+def start(m):
+    uid = m.chat.id
+    user = get_user(uid)
+    if m.from_user.username:
+        user["username"] = m.from_user.username.lower()
         save_data()
-    
-    bot.send_message(
-        user_id,
-        "🎉 *Добро пожаловать в игровой бот!*\n\n"
-        f"💰 *Стартовый бонус:* 5 монет\n\n"
-        "🎮 Игры стоят 1 монету, победа приносит выигрыш!\n"
-        "🎁 Заходи каждый день за бонусом!\n\n"
-        "👇 *Выбери действие:*",
-        reply_markup=main_keyboard(),
-        parse_mode="Markdown"
-    )
+    if not user.get("region"):
+        bot.send_message(uid, "🌍 *Выбери свой регион:*", reply_markup=region_keyboard(), parse_mode="Markdown")
+    else:
+        bot.send_message(uid, f"🎉 *Добро пожаловать в игровой портал!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
 
-# ========== ОБРАБОТЧИК КНОПОК ==========
-@bot.message_handler(func=lambda message: True)
-def handle_buttons(message):
-    user_id = message.chat.id
-    text = message.text
-    user = get_user(user_id)
+@bot.message_handler(func=lambda m: user_data.get(str(m.chat.id), {}).get("region") is None)
+def set_region(m):
+    uid = m.chat.id
+    if m.text in REGIONS:
+        user = get_user(uid)
+        user["region"] = m.text
+        save_data()
+        bot.send_message(uid, f"✅ Регион *{m.text}* сохранён!", parse_mode="Markdown")
+        bot.send_message(uid, f"🎉 *Добро пожаловать!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
+    else:
+        bot.send_message(uid, "Пожалуйста, выбери регион из кнопок 👇", reply_markup=region_keyboard())
 
-    if text == "🎮 Игры":
-        bot.send_message(user_id, "🎮 *Выбери игру (вход 1 монета):*", reply_markup=games_keyboard(), parse_mode="Markdown")
+@bot.message_handler(func=lambda m: True)
+def handle_buttons(m):
+    uid = m.chat.id
+    text = m.text
+    user = get_user(uid)
 
-    elif text == "🎁 Ежедневный бонус":
-        if can_take_bonus(user_id):
-            add_coins(user_id, 10)
+    if text == "🎲 Игры на монеты":
+        gamble_menu(uid)
+    elif text == "💣 Сапёр (Мина)":
+        mines_menu(uid)
+    elif text == "❌⭕ Крестики-нолики":
+        tictac_menu(uid)
+    elif text == "🛒 Магазин":
+        shop_menu(uid)
+    elif text == "📊 Моя статистика":
+        my_stats(uid)
+    elif text == "🎁 Бонус":
+        if can_take_bonus(uid):
+            add_coins(uid, 10)
             user["last_bonus"] = datetime.now().isoformat()
             save_data()
-            bot.send_message(user_id, "🎁 *Ты получил 10 монет!* 💰", parse_mode="Markdown")
+            bot.send_message(uid, "🎁 *+10 монет!* Завтра приходи ещё!", parse_mode="Markdown")
         else:
-            bot.send_message(user_id, "⏳ *Бонус уже получен! Заходи завтра.*", parse_mode="Markdown")
+            bot.send_message(uid, "⏳ *Бонус уже получен.* Возвращайся завтра!", parse_mode="Markdown")
+    elif text == "❓ Вопрос":
+        bot.send_message(uid, "✍️ Напиши свой вопрос. Админ ответит в ближайшее время.")
+        waiting_for_question[uid] = True
+    elif text == "🔧 Админ" and uid == ADMIN_ID:
+        admin_panel(uid)
+    elif waiting_for_question.get(uid):
+        forward_question(uid, text)
+        waiting_for_question[uid] = False
+    elif uid == ADMIN_ID:
+        if text == "💰 Выдать монеты":
+            bot.send_message(uid, "/addcoins ID КОЛИЧЕСТВО")
+        elif text == "🔻 Забрать монеты":
+            bot.send_message(uid, "/removecoins ID КОЛИЧЕСТВО")
+        elif text == "👥 Все пользователи":
+            users = all_users_list()
+            msg = "👥 *Пользователи:*\n"
+            for u in users[:30]:
+                region = user_data.get(u, {}).get("region", "?")
+                msg += f"🆔 {u} — {get_user(u)['coins']}💰 ({region})\n"
+            bot.send_message(uid, msg, parse_mode="Markdown")
+        elif text == "📢 Рассылка":
+            bot.send_message(uid, "Введи сообщение для рассылки:")
+            bot.register_next_step_handler(m, broadcast_message)
+        elif text == "📊 Глобальная статистика":
+            total_u, total_c, avg_c, top = global_stats()
+            region_stats_data = region_stats()
+            region_text = "\n".join([f"{r}: {v['users']} игроков, {v['coins']}💰" for r, v in region_stats_data.items()])
+            bot.send_message(uid, f"📊 *Глобальная статистика*\n"
+                                  f"👥 Всего игроков: {total_u}\n"
+                                  f"💰 Всего монет: {total_c}\n"
+                                  f"📈 Средний баланс: {avg_c:.2f}\n\n"
+                                  f"🏆 *Топ-10:*\n{top}\n\n"
+                                  f"🌍 *По регионам:*\n{region_text}",
+                                  parse_mode="Markdown")
+        elif text == "🎮 Активные игроки":
+            active = active_players()
+            if not active:
+                bot.send_message(uid, "Сейчас никто не играет")
+            else:
+                msg = "🎮 *Сейчас играют:*\n"
+                for uid_a, game in active:
+                    msg += f"🆔 {uid_a} — {game}\n"
+                bot.send_message(uid, msg, parse_mode="Markdown")
+        elif text == "🔙 Назад":
+            bot.send_message(uid, f"{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
 
-    elif text == "💰 Мой баланс":
-        bot.send_message(user_id, f"💰 *Твой баланс:* {user['coins']} монет", parse_mode="Markdown")
+def gamble_menu(uid):
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("🎲 Угадай кубик", callback_data="gamble_dice1"),
+        InlineKeyboardButton("🎲🎲 Угадай сумму", callback_data="gamble_dice2"),
+        InlineKeyboardButton("🔢 Угадай число", callback_data="gamble_number"),
+        InlineKeyboardButton("✂️ Камень-ножницы", callback_data="gamble_rps"),
+        InlineKeyboardButton("🔮 Оракул", callback_data="gamble_oracle"),
+        InlineKeyboardButton("◀️ Назад", callback_data="back_main")
+    )
+    bot.send_message(uid, "🎲 *Казино (игры на монеты)*\n⚠️ Вход 1 монета, при проигрыше штраф -1", reply_markup=kb, parse_mode="Markdown")
 
-    elif text == "💸 Перевести монеты":
-        bot.send_message(user_id, "💸 *Перевод монет:*\n\n`/transfer @username 10`\n\nПример: `/transfer @durov 10`", parse_mode="Markdown")
+def shop_menu(uid):
+    user = get_user(uid)
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("🌟 Тема 'Космос' (20💰)", callback_data="buy_theme_space"),
+        InlineKeyboardButton("🔥 Тема 'Огонь' (25💰)", callback_data="buy_theme_fire"),
+        InlineKeyboardButton("✨ Эффект 'Молния' (30💰)", callback_data="buy_effect_lightning"),
+        InlineKeyboardButton("◀️ Назад", callback_data="back_main")
+    )
+    bot.send_message(uid, f"🛒 *Магазин*\n💰 У тебя {user['coins']} монет\n\n"
+                          f"🌟 Космос — 20 монет\n🔥 Огонь — 25 монет\n✨ Молния — 30 монет",
+                          reply_markup=kb, parse_mode="Markdown")
 
-    elif text == "🎲 Рандом":
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        keyboard.add(KeyboardButton("🎲 Случайное число"), KeyboardButton("🪙 Монетка"))
-        keyboard.add(KeyboardButton("🔙 Назад"))
-        bot.send_message(user_id, "🎲 *Выбери:*", reply_markup=keyboard, parse_mode="Markdown")
-
-    elif text == "🎲 Случайное число":
-        bot.send_message(user_id, f"🎲 *{random.randint(1, 100)}*", parse_mode="Markdown")
-    
-    elif text == "🪙 Монетка":
-        result = random.choice(["Орёл 🦅", "Решка 💰"])
-        bot.send_message(user_id, f"🪙 *{result}*", parse_mode="Markdown")
-
-    elif text == "📱 Мои соцсети":
-        keyboard = InlineKeyboardMarkup(row_width=1)
-        keyboard.add(
-            InlineKeyboardButton("📘 Telegram канал", url="https://t.me/@Stasyan_MD")
-        )
-        bot.send_message(user_id, "📱 *Мои соцсети:*", reply_markup=keyboard, parse_mode="Markdown")
-
-    elif text == "❓ Задать вопрос":
-        bot.send_message(user_id, "✍️ *Напиши свой вопрос:*", parse_mode="Markdown")
-        waiting_for_message[user_id] = True
-
-    elif text == "💰 Курс валют":
-        try:
-            url = "https://www.cbr-xml-daily.ru/daily_json.js"
-            response = requests.get(url)
-            data = response.json()
-            usd = data["Valute"]["USD"]["Value"]
-            eur = data["Valute"]["EUR"]["Value"]
-            bot.send_message(
-                user_id,
-                f"💰 *Курс ЦБ РФ:*\n\n🇺🇸 USD: {usd:.2f} ₽\n🇪🇺 EUR: {eur:.2f} ₽",
-                parse_mode="Markdown"
-            )
-        except:
-            bot.send_message(user_id, "❌ Ошибка получения курса")
-
-    elif text == "😄 Анекдот":
-        jokes = [
-            "🍟 - Картошка фри есть?\n- Нет\n- А картошка по-деревенски?\n- Тоже нет\n- А что есть?\n- Картошка 😄",
-            "Встретились два друга:\n- Как жизнь?\n- Да вот, жена не готовит...\n- И ты живой? 🤯"
-        ]
-        bot.send_message(user_id, random.choice(jokes))
-
-    elif text == "🔙 Назад":
-        bot.send_message(user_id, "🔙 *Главное меню:*", reply_markup=main_keyboard(), parse_mode="Markdown")
-
-    else:
-        if waiting_for_message.get(user_id):
-            user_name = message.from_user.first_name or "Пользователь"
-            username = f"@{message.from_user.username}" if message.from_user.username else "нет"
-            bot.send_message(
-                ADMIN_ID,
-                f"📩 *Вопрос от {user_name} ({username})*\n🆔 `{user_id}`\n📝: {text}",
-                parse_mode="Markdown"
-            )
-            bot.send_message(user_id, "✅ *Вопрос отправлен!*", parse_mode="Markdown")
-            waiting_for_message[user_id] = False
-        elif user.get("game") == "guess":
-            handle_guess(user_id, text)
-        elif user.get("game") == "hangman":
-            handle_hangman_guess(user_id, text.lower())
-        else:
-            bot.send_message(user_id, "Используй кнопки 👇", reply_markup=main_keyboard())
-
-# ========== ИГРЫ ==========
-def check_and_pay(user_id):
-    if not remove_coins(user_id, 1):
-        bot.send_message(user_id, "❌ *Недостаточно монет!* (нужна 1 монета)\nЗабери ежедневный бонус.", parse_mode="Markdown")
-        return False
-    return True
-
-def handle_guess(user_id, guess_text):
-    user = get_user(user_id)
+def my_stats(uid):
+    user = get_user(uid)
+    region = user.get("region") or "❓"
+    all_users = all_users_list()
+    sorted_users = sorted(all_users, key=lambda x: user_data[x]["coins"], reverse=True)
     try:
-        guess = int(guess_text)
-        if guess == user["number"]:
-            win = random.randint(5, 10)
-            add_coins(user_id, win)
-            bot.send_message(user_id, f"🎉 *Угадал!* +{win} монет", parse_mode="Markdown")
-            user["game"] = None
-        elif guess < user["number"]:
-            bot.send_message(user_id, "📈 *Больше*", parse_mode="Markdown")
-        else:
-            bot.send_message(user_id, "📉 *Меньше*", parse_mode="Markdown")
+        place = sorted_users.index(str(uid)) + 1
     except:
-        bot.send_message(user_id, "❌ Введи число!")
+        place = "?"
+    bot.send_message(uid, f"📊 *Твоя статистика*\n\n"
+                          f"👤 Имя: {user.get('username', 'Игрок')}\n"
+                          f"📍 Регион: {region}\n"
+                          f"💰 Баланс: {user['coins']}\n"
+                          f"🏆 Место в мире: {place}\n"
+                          f"🎮 Активная игра: {user.get('current_game') or 'нет'}",
+                          parse_mode="Markdown")
 
-def handle_hangman_guess(user_id, guess):
-    user = get_user(user_id)
-    game = user.get("hangman")
-    if not game:
+def admin_panel(uid):
+    bot.send_message(uid, "🔧 *Админ-панель*", reply_markup=admin_keyboard(), parse_mode="Markdown")
+
+def broadcast_message(m):
+    if m.chat.id != ADMIN_ID:
         return
-    word = game["word"]
-    if guess == word:
-        win = random.randint(8, 12)
-        add_coins(user_id, win)
-        bot.send_message(user_id, f"🎉 *Победа!* +{win} монет", parse_mode="Markdown")
-        user["game"] = None
-        user["hangman"] = None
-    elif guess in game.get("guessed", []):
-        bot.send_message(user_id, "⚠️ Уже называл")
-    elif guess in word:
-        game["guessed"].append(guess)
-        bot.send_message(user_id, f"✅ Буква '{guess}' есть!")
-        if all(l in game["guessed"] for l in word):
-            win = random.randint(8, 12)
-            add_coins(user_id, win)
-            bot.send_message(user_id, f"🎉 *Победа!* +{win} монет", parse_mode="Markdown")
-            user["game"] = None
-            user["hangman"] = None
-    else:
-        game["attempts"] -= 1
-        bot.send_message(user_id, f"❌ Нет буквы '{guess}'. Осталось: {game['attempts']}")
-        if game["attempts"] <= 0:
-            bot.send_message(user_id, f"💀 *Проигрыш!* Слово: {word}", parse_mode="Markdown")
-            user["game"] = None
-            user["hangman"] = None
+    text = m.text
+    sent = 0
+    for uid in all_users_list():
+        try:
+            bot.send_message(int(uid), f"📢 *Рассылка от администратора:*\n\n{text}", parse_mode="Markdown")
+            sent += 1
+        except:
+            pass
+    bot.send_message(ADMIN_ID, f"✅ Отправлено {sent} пользователям")
 
-# ========== INLINE КНОПКИ ==========
-@bot.callback_query_handler(func=lambda call: True)
-def game_callback(call):
-    user_id = call.message.chat.id
-    data = call.data
+def forward_question(user_id, q):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("✍️ Ответить", callback_data=f"answer_{user_id}"))
+    bot.send_message(ADMIN_ID, f"📩 *Вопрос от пользователя* `{user_id}`:\n\n{q}", reply_markup=kb, parse_mode="Markdown")
 
-    if data == "exit_games":
-        bot.edit_message_text("🎮 Выход", call.message.chat.id, call.message.message_id)
+@bot.callback_query_handler(func=lambda call: call.data.startswith("answer_"))
+def answer_prompt(call):
+    if call.message.chat.id != ADMIN_ID:
+        bot.answer_callback_query(call.id, "Нет прав")
         return
+    user_id = call.data.split("_")[1]
+    bot.send_message(ADMIN_ID, f"✍️ Введи ответ для пользователя {user_id}:")
+    bot.register_next_step_handler(call.message, lambda m: send_answer(m, user_id))
 
-    if data == "guess_number":
-        if not check_and_pay(user_id):
-            return
-        number = random.randint(1, 20)
-        user = get_user(user_id)
-        user["game"] = "guess"
-        user["number"] = number
-        save_data()
-        bot.edit_message_text("🔢 *Я загадал число от 1 до 20!*", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
+def send_answer(m, target_id):
+    if m.chat.id != ADMIN_ID:
+        return
+    bot.send_message(int(target_id), f"📬 *Ответ от администратора:*\n\n{m.text}", parse_mode="Markdown")
+    bot.send_message(ADMIN_ID, f"✅ Ответ отправлен пользователю {target_id}")
 
-    elif data == "rps":
-        if not check_and_pay(user_id):
-            return
-        keyboard = InlineKeyboardMarkup(row_width=3)
-        keyboard.add(
-            InlineKeyboardButton("🗻", callback_data="rps_rock"),
-            InlineKeyboardButton("✂️", callback_data="rps_scissors"),
-            InlineKeyboardButton("📄", callback_data="rps_paper")
-        )
-        bot.edit_message_text("✂️ *Выбери:*", call.message.chat.id, call.message.message_id, reply_markup=keyboard, parse_mode="Markdown")
+@bot.message_handler(commands=['addcoins'])
+def add_cmd(m):
+    if m.chat.id != ADMIN_ID:
+        return
+    try:
+        _, uid, amount = m.text.split()
+        add_coins(int(uid), int(amount))
+        bot.send_message(ADMIN_ID, f"✅ Выдано {amount} монет пользователю {uid}")
+    except:
+        bot.send_message(ADMIN_ID, "❌ /addcoins ID КОЛИЧЕСТВО")
 
-    elif data.startswith("rps_"):
-        choices = {"rps_rock": "камень", "rps_scissors": "ножницы", "rps_paper": "бумага"}
-        user_choice = choices[data]
-        bot_choice = random.choice(["камень", "ножницы", "бумага"])
-        if user_choice == bot_choice:
-            win = 2
-            result = "🤝 Ничья!"
-        elif (user_choice == "камень" and bot_choice == "ножницы") or \
-             (user_choice == "ножницы" and bot_choice == "бумага") or \
-             (user_choice == "бумага" and bot_choice == "камень"):
-            win = random.randint(3, 8)
-            result = "🎉 Победа!"
+@bot.message_handler(commands=['removecoins'])
+def remove_cmd(m):
+    if m.chat.id != ADMIN_ID:
+        return
+    try:
+        _, uid, amount = m.text.split()
+        if remove_coins(int(uid), int(amount)):
+            bot.send_message(ADMIN_ID, f"✅ Забрано {amount} монет у {uid}")
         else:
-            win = 0
-            result = "😭 Поражение!"
-        if win:
-            add_coins(user_id, win)
-        bot.edit_message_text(f"{result}\n💰 +{win} монет" if win else f"{result}\n💰 0 монет", call.message.chat.id, call.message.message_id)
+            bot.send_message(ADMIN_ID, f"❌ Недостаточно монет у {uid}")
+    except:
+        bot.send_message(ADMIN_ID, "❌ /removecoins ID КОЛИЧЕСТВО")
 
-    elif data == "dice":
-        if not check_and_pay(user_id):
+# ========== АЗАРТНЫЕ ИГРЫ ==========
+def gamble_dice1_handler(uid):
+    bot.send_message(uid, "🎲 Введи число от 1 до 6:")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_dice1_play(m, uid))
+
+def gamble_dice1_play(m, uid):
+    try:
+        bet = int(m.text)
+        if bet < 1 or bet > 6:
+            bot.send_message(uid, "❌ Число должно быть от 1 до 6")
             return
-        win = random.randint(2, 5)
-        add_coins(user_id, win)
-        bot.edit_message_text(f"🎲 Выпало: {random.randint(1, 6)}\n💰 +{win} монет", call.message.chat.id, call.message.message_id)
+        if not remove_coins(uid, 1):
+            bot.send_message(uid, "❌ Недостаточно монет")
+            return
+        roll = random.randint(1, 6)
+        if bet == roll:
+            win = random.randint(2, 5)
+            add_coins(uid, win)
+            bot.send_message(uid, f"🎲 Выпало *{roll}*. Ты угадал! +{win} монет", parse_mode="Markdown")
+        else:
+            remove_coins(uid, 1)
+            bot.send_message(uid, f"🎲 Выпало *{roll}*. Ты проиграл 2 монеты", parse_mode="Markdown")
+    except:
+        bot.send_message(uid, "❌ Введи число")
 
-    elif data == "two_dice":
-        if not check_and_pay(user_id):
+def gamble_dice2_handler(uid):
+    bot.send_message(uid, "🎲🎲 Введи сумму от 2 до 12:")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_dice2_play(m, uid))
+
+def gamble_dice2_play(m, uid):
+    try:
+        bet = int(m.text)
+        if bet < 2 or bet > 12:
+            bot.send_message(uid, "❌ Сумма должна быть от 2 до 12")
+            return
+        if not remove_coins(uid, 1):
+            bot.send_message(uid, "❌ Недостаточно монет")
             return
         d1, d2 = random.randint(1, 6), random.randint(1, 6)
-        win = random.randint(3, 7)
-        add_coins(user_id, win)
-        bot.edit_message_text(f"🎲🎲 {d1}+{d2}={d1+d2}\n💰 +{win} монет", call.message.chat.id, call.message.message_id)
-
-    elif data == "oracle":
-        if not check_and_pay(user_id):
-            return
-        answers = ["✅ Да", "❌ Нет", "🤔 Скорее да", "🌟 Да", "💫 Спроси позже"]
-        win = random.randint(1, 3)
-        add_coins(user_id, win)
-        bot.edit_message_text(f"🔮 *{random.choice(answers)}*\n💰 +{win} монет", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
-
-    elif data == "hangman":
-        if not check_and_pay(user_id):
-            return
-        words = {"python": "🐍 Язык", "телефон": "📱 Устройство", "компьютер": "💻 Устройство", "солнце": "☀️ Светило", "радуга": "🌈 После дождя"}
-        word = random.choice(list(words.keys()))
-        user = get_user(user_id)
-        user["game"] = "hangman"
-        user["hangman"] = {"word": word, "guessed": [], "attempts": 6, "hint": words[word]}
-        save_data()
-        bot.edit_message_text(f"📝 *Виселица!*\nПодсказка: {words[word]}\nПиши буквы или слово целиком.", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
-
-# ========== ПЕРЕВОД МОНЕТ ==========
-@bot.message_handler(commands=['transfer'])
-def transfer_coins(message):
-    user_id = str(message.chat.id)
-    sender = get_user(user_id)
-    try:
-        parts = message.text.split()
-        if len(parts) != 3:
-            bot.send_message(user_id, "❌ Формат: `/transfer @username 10`", parse_mode="Markdown")
-            return
-        target_username = parts[1].replace("@", "").lower()
-        amount = int(parts[2])
-        if amount <= 0:
-            bot.send_message(user_id, "❌ Сумма > 0")
-            return
-        target_id = None
-        for uid, data in user_data.items():
-            if data.get("username") == target_username:
-                target_id = uid
-                break
-        if not target_id:
-            bot.send_message(user_id, f"❌ @{target_username} не найден")
-            return
-        if sender["coins"] < amount:
-            bot.send_message(user_id, f"❌ Мало монет. Баланс: {sender['coins']}")
-            return
-        remove_coins(user_id, amount)
-        add_coins(target_id, amount)
-        bot.send_message(user_id, f"✅ Переведено {amount} монет @{target_username}")
-        bot.send_message(int(target_id), f"🎉 +{amount} монет от @{message.from_user.username}")
+        total = d1 + d2
+        if bet == total:
+            win = random.randint(4, 10)
+            add_coins(uid, win)
+            bot.send_message(uid, f"🎲 {d1}+{d2}={total}. Угадал! +{win} монет", parse_mode="Markdown")
+        else:
+            remove_coins(uid, 1)
+            bot.send_message(uid, f"🎲 {d1}+{d2}={total}. Проиграл 2 монеты", parse_mode="Markdown")
     except:
-        bot.send_message(user_id, "❌ Ошибка. Пример: `/transfer @durov 10`", parse_mode="Markdown")
+        bot.send_message(uid, "❌ Введи число")
 
-# ========== ОТВЕТ АДМИНА ==========
-@bot.message_handler(commands=['answer'])
-def answer_user(message):
-    if message.chat.id != ADMIN_ID:
+def gamble_number_handler(uid):
+    bot.send_message(uid, "🔢 Введи число от 1 до 20:")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_number_play(m, uid))
+
+def gamble_number_play(m, uid):
+    try:
+        bet = int(m.text)
+        if bet < 1 or bet > 20:
+            bot.send_message(uid, "❌ Число должно быть от 1 до 20")
+            return
+        if not remove_coins(uid, 1):
+            bot.send_message(uid, "❌ Недостаточно монет")
+            return
+        secret = random.randint(1, 20)
+        if bet == secret:
+            win = random.randint(5, 12)
+            add_coins(uid, win)
+            bot.send_message(uid, f"🔢 Загадано *{secret}*. Угадал! +{win} монет", parse_mode="Markdown")
+        else:
+            remove_coins(uid, 1)
+            bot.send_message(uid, f"🔢 Загадано *{secret}*. Проиграл 2 монеты", parse_mode="Markdown")
+    except:
+        bot.send_message(uid, "❌ Введи число")
+
+def gamble_rps_handler(uid):
+    bot.send_message(uid, "✂️ Введи: камень, ножницы или бумага")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_rps_play(m, uid))
+
+def gamble_rps_play(m, uid):
+    choice = m.text.lower()
+    if choice not in ["камень", "ножницы", "бумага"]:
+        bot.send_message(uid, "❌ Напиши: камень, ножницы или бумага")
         return
-    try:
-        parts = message.text.split(maxsplit=2)
-        user_id = int(parts[1])
-        answer_text = parts[2]
-        bot.send_message(user_id, f"📬 *Ответ:*\n{answer_text}", parse_mode="Markdown")
-        bot.send_message(ADMIN_ID, f"✅ Отправлено {user_id}")
-    except:
-        bot.send_message(ADMIN_ID, "❌ /answer ID текст")
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, "❌ Недостаточно монет")
+        return
+    bot_choice = random.choice(["камень", "ножницы", "бумага"])
+    if choice == bot_choice:
+        add_coins(uid, 2)
+        bot.send_message(uid, f"Ничья! +2 монеты")
+    elif (choice == "камень" and bot_choice == "ножницы") or (choice == "ножницы" and bot_choice == "бумага") or (choice == "бумага" and bot_choice == "камень"):
+        win = random.randint(3, 7)
+        add_coins(uid, win)
+        bot.send_message(uid, f"Победа! +{win} монет")
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, f"Поражение. -2 монеты")
 
-# ========== ЗАПУСК ==========
+def gamble_oracle_handler(uid):
+    bot.send_message(uid, "🔮 Оракул. Введи 'Да' или 'Нет':")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_oracle_play(m, uid))
+
+def gamble_oracle_play(m, uid):
+    user_ans = m.text.lower()
+    if user_ans not in ["да", "нет"]:
+        bot.send_message(uid, "❌ Напиши: Да или Нет")
+        return
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, "❌ Недостаточно монет")
+        return
+    oracle = random.choice(["да", "нет"])
+    if user_ans == oracle:
+        add_coins(uid, 3)
+        bot.send_message(uid, f"🔮 Оракул сказал: *{oracle}*. Ты угадал! +3 монеты", parse_mode="Markdown")
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, f"🔮 Оракул сказал: *{oracle}*. Ты ошибся. -2 монеты", parse_mode="Markdown")
+
+# ========== САПЁР (МИНА) ==========
+def mines_menu(uid):
+    kb = InlineKeyboardMarkup(row_width=3)
+    kb.add(
+        InlineKeyboardButton("5x5", callback_data="mines_5"),
+        InlineKeyboardButton("8x8", callback_data="mines_8"),
+        InlineKeyboardButton("10x10", callback_data="mines_10"),
+        InlineKeyboardButton("◀️ Назад", callback_data="back_main")
+    )
+    bot.send_message(uid, "💣 *Сапёр (Мина)*\n⚠️ Вход 1 монета. Наступил на мину → -3 монеты. Прошёл все → +5 монет\nВыбери размер поля:", reply_markup=kb, parse_mode="Markdown")
+
+def mines_start(uid, size):
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, "❌ Недостаточно монет для игры")
+        return
+    n = size
+    field = [["?" for _ in range(n)] for _ in range(n)]
+    mines = set()
+    while len(mines) < n:
+        mines.add((random.randint(0, n-1), random.randint(0, n-1)))
+    games_data[uid] = {"game": "mines", "field": field, "mines": mines, "size": n, "score": 0}
+    mines_show(uid)
+
+def mines_show(uid):
+    data = games_data.get(uid)
+    if not data:
+        return
+    n = data["size"]
+    field = data["field"]
+    text = "```\n"
+    for row in field:
+        text += " ".join(row) + "\n"
+    text += "```"
+    kb = InlineKeyboardMarkup(row_width=n)
+    for i in range(n):
+        row_btns = []
+        for j in range(n):
+            if field[i][j] == "?":
+                row_btns.append(InlineKeyboardButton("❓", callback_data=f"mines_click_{i}_{j}"))
+            else:
+                row_btns.append(InlineKeyboardButton(field[i][j], callback_data="no"))
+        kb.add(*row_btns)
+    bot.send_message(uid, f"💣 Осталось закрытых: {n*n - data['score']}\n{text}", reply_markup=kb, parse_mode="Markdown")
+
+def mines_click(uid, i, j):
+    data = games_data.get(uid)
+    if not data:
+        return
+    if (i, j) in data["mines"]:
+        bot.send_message(uid, f"💥 Ты подорвался на мине! -3 монеты")
+        remove_coins(uid, 3)
+        del games_data[uid]
+        return
+    if data["field"][i][j] != "?":
+        return
+    data["field"][i][j] = "🌿"
+    data["score"] += 1
+    if data["score"] == data["size"] * data["size"] - len(data["mines"]):
+        bot.send_message(uid, f"🏆 Победа! +5 монет")
+        add_coins(uid, 5)
+        del games_data[uid]
+        return
+    mines_show(uid)
+
+# ========== КРЕСТИКИ-НОЛИКИ ==========
+def tictac_menu(uid):
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("🤖 С ботом (1💰)", callback_data="tictac_bot"),
+        InlineKeyboardButton("👥 С другом (1💰)", callback_data="tictac_friend"),
+        InlineKeyboardButton("◀️ Назад", callback_data="back_main")
+    )
+    bot.send_message(uid, "❌⭕ *Крестики-нолики*\n⚠️ Вход 1 монета. Победитель получает +3 монеты\nВыбери режим:", reply_markup=kb, parse_mode="Markdown")
+
+def tictac_start(uid, mode):
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, "❌ Недостаточно монет для игры")
+        return
+    field = [[" " for _ in range(3)] for _ in range(3)]
+    games_data[uid] = {"game": "tictac", "field": field, "mode": mode, "turn": "X", "players": {"X": uid}, "bet": 1}
+    if mode == "friend":
+        bot.send_message(uid, "Введи ID противника (число):")
+        bot.register_next_step_handler_by_chat_id(uid, lambda m: set_opponent(m, uid))
+    else:
+        tictac_show(uid)
+
+def set_opponent(m, uid):
+    try:
+        opp = int(m.text)
+        if opp == uid:
+            bot.send_message(uid, "❌ Нельзя играть с самим собой")
+            add_coins(uid, 1)
+            del games_data[uid]
+            return
+        if not remove_coins(opp, 1):
+            bot.send_message(uid, f"❌ У пользователя {opp} недостаточно монет")
+            add_coins(uid, 1)
+            del games_data[uid]
+            return
+        games_data[uid]["players"]["O"] = opp
+        games_data[uid]["players_list"] = [uid, opp]
+        bot.send_message(uid, f"✅ Противник {opp} добавлен. Твой ход (X)")
+        bot.send_message(opp, f"🎮 Игрок {uid} вызывает тебя на крестики-нолики (1 монета). Твои ходы (O)")
+        tictac_show(uid)
+    except:
+        bot.send_message(uid, "❌ Введи числовой ID")
+        add_coins(uid, 1)
+        del games_data[uid]
+
+def tictac_show(uid):
+    data = games_data.get(uid)
+    if not data:
+        return
+    field = data["field"]
+    text = "```\n"
+    for row in field:
+        text += "|".join(row) + "\n"
+    text += "```"
+    kb = InlineKeyboardMarkup(row_width=3)
+    for i in range(3):
+        row_btns = []
+        for j in range(3):
+            if field[i][j] == " ":
+                row_btns.append(InlineKeyboardButton("⬜", callback_data=f"tictac_move_{i}_{j}"))
+            else:
+                row_btns.append(InlineKeyboardButton(field[i][j], callback_data="no"))
+        kb.add(*row_btns)
+    bot.send_message(uid, f"Ход: {data['turn']}\n{text}", reply_markup=kb, parse_mode="Markdown")
+    if data["mode"] == "friend" and data.get("players", {}).get("O"):
+        opp = data["players"]["O"]
+        bot.send_message(opp, f"Ход: {data['turn']}\n{text}", reply_markup=kb, parse_mode="Markdown")
+
+def tictac_move(uid, i, j):
+    data = games_data.get(uid)
+    if not data:
+        return
+    current_player = uid if data["turn"] == "X" else data["players"].get("O")
+    if current_player != uid:
+        return
+    if data["field"][i][j] != " ":
+        return
+    data["field"][i][j] = data["turn"]
+    winner = check_winner(data["field"])
+    if winner:
+        win_amount = 3
+        add_coins(uid, win_amount)
+        bot.send_message(uid, f"🏆 Победил {winner}! +{win_amount} монет")
+        if data["mode"] == "friend" and data.get("players", {}).get("O"):
+            bot.send_message(data["players"]["O"], f"🏆 Победил {winner}!")
+        del games_data[uid]
+        return
+    if all(data["field"][r][c] != " " for r in range(3) for c in range(3)):
+        bot.send_message(uid, "Ничья! Монеты возвращены")
+        add_coins(uid, 1)
+        if data["mode"] == "friend" and data.get("players", {}).get("O"):
+            add_coins(data["players"]["O"], 1)
+            bot.send_message(data["players"]["O"], "Ничья! Монеты возвращены")
+        del games_data[uid]
+        return
+    data["turn"] = "O" if data["turn"] == "X" else "X"
+    tictac_show(uid)
+
+def check_winner(f):
+    for row in f:
+        if row[0] == row[1] == row[2] != " ":
+            return row[0]
+    for col in range(3):
+        if f[0][col] == f[1][col] == f[2][col] != " ":
+            return f[0][col]
+    if f[0][0] == f[1][1] == f[2][2] != " ":
+        return f[0][0]
+    if f[0][2] == f[1][1] == f[2][0] != " ":
+        return f[0][2]
+    return None
+
+# ========== ОБРАБОТЧИК CALLBACK ==========
+@bot.callback_query_handler(func=lambda call: True)
+def callback_handler(call):
+    uid = call.message.chat.id
+    data = call.data
+
+    if data == "back_main":
+        bot.edit_message_text("🎮 Главное меню", uid, call.message.message_id)
+        bot.send_message(uid, f"{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
+    elif data.startswith("buy_theme_"):
+        theme = data.split("_")[2]
+        price = {"space": 20, "fire": 25}.get(theme, 0)
+        if remove_coins(uid, price):
+            user = get_user(uid)
+            user["theme"] = "🌌" if theme == "space" else "🔥"
+            save_data()
+            bot.edit_message_text(f"✅ Тема '{'Космос' if theme == 'space' else 'Огонь'}' куплена!", uid, call.message.message_id)
+            bot.send_message(uid, f"{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
+        else:
+            bot.answer_callback_query(call.id, "❌ Недостаточно монет")
+    elif data == "buy_effect_lightning":
+        if remove_coins(uid, 30):
+            user = get_user(uid)
+            user["effect"] = "⚡"
+            save_data()
+            bot.edit_message_text("✅ Эффект 'Молния' активирован!", uid, call.message.message_id)
+        else:
+            bot.answer_callback_query(call.id, "❌ Недостаточно монет")
+    elif data.startswith("gamble_"):
+        if data == "gamble_dice1":
+            gamble_dice1_handler(uid)
+        elif data == "gamble_dice2":
+            gamble_dice2_handler(uid)
+        elif data == "gamble_number":
+            gamble_number_handler(uid)
+        elif data == "gamble_rps":
+            gamble_rps_handler(uid)
+        elif data == "gamble_oracle":
+            gamble_oracle_handler(uid)
+    elif data == "tictac_bot":
+        tictac_start(uid, "bot")
+    elif data == "tictac_friend":
+        tictac_start(uid, "friend")
+    elif data.startswith("tictac_move_"):
+        _, _, i, j = data.split("_")
+        tictac_move(uid, int(i), int(j))
+    elif data.startswith("mines_"):
+        if data == "mines_5":
+            mines_start(uid, 5)
+        elif data == "mines_8":
+            mines_start(uid, 8)
+        elif data == "mines_10":
+            mines_start(uid, 10)
+    elif data.startswith("mines_click_"):
+        _, _, i, j = data.split("_")
+        mines_click(uid, int(i), int(j))
+
 if __name__ == "__main__":
-    print("🤖 Полный бот запущен!")
+    print("✅ Бот с платными играми и без канала запущен")
     bot.infinity_polling(skip_pending=True)
