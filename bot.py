@@ -503,10 +503,10 @@ def commands_list(uid):
         "• 5 кубиков (5–30)\n• 10 кубиков (10–60)\n• Кости на удачу (3 кубика, сумма ≥15)\n"
         "📌 *Погрешность:* ±1 даёт 50%, ±5 даёт 25% выигрыша\n\n"
         "🎮 *Другие игры:*\n"
-        "• 🔢 Угадай число\n• ✂️ Камень-ножницы\n• 🔮 Оракул\n"
-        "• 🎴 Карты и Джокер\n• 🎰 Слоты\n• 💎 Камень-мешок-монета\n"
-        "• 🎯 Угадай цвет\n• 📈 Выше/Ниже\n• 🔫 Русская рулетка\n"
-        "• 🔥 Горячо/Холодно\n• 🎯 Быки и коровы\n\n"
+        "• 🔢 Угадай число\n• ✂️ Камень-ножницы\n• 🎴 Карты и Джокер\n"
+        "• 🎰 Слоты\n• 💎 Камень-мешок-монета\n• 🎯 Угадай цвет\n"
+        "• 📈 Выше/Ниже\n• 🔫 Русская рулетка\n• 🔥 Горячо/Холодно\n"
+        "• 🎯 Быки и коровы\n• 🎲 Чет/Нечет\n\n"
         "💰 *Финансы:*\n• 🎁 Бонус\n• 👥 Рефералы\n• 🛒 Магазин\n\n"
         "👤 *Профиль:*\n• 👤 Профиль\n• 🔍 Найти игрока\n\n"
         "ℹ️ *Прочее:*\n• ❓ Вопрос\n• 📋 Все команды"
@@ -559,7 +559,6 @@ def games_keyboard(uid):
     kb.add(
         InlineKeyboardButton("🔢 Угадай число", callback_data="gamble_number"),
         InlineKeyboardButton("✂️ Камень-ножницы", callback_data="gamble_rps"),
-        InlineKeyboardButton("🔮 Оракул", callback_data="gamble_oracle"),
         InlineKeyboardButton("🎴 Карты и Джокер", callback_data="gamble_cards"),
         InlineKeyboardButton("🎰 Слоты", callback_data="gamble_slots"),
         InlineKeyboardButton("💎 Камень-мешок-монета", callback_data="gamble_rps2"),
@@ -568,6 +567,7 @@ def games_keyboard(uid):
         InlineKeyboardButton("🔫 Русская рулетка", callback_data="gamble_roulette"),
         InlineKeyboardButton("🔥 Горячо/Холодно", callback_data="gamble_hotcold"),
         InlineKeyboardButton("🎯 Быки и коровы", callback_data="gamble_bullscows"),
+        InlineKeyboardButton("🎲 Чет/Нечет", callback_data="gamble_evenodd"),
         InlineKeyboardButton(f"◀️ {get_phrase(lang, 'back')}", callback_data="back_main")
     )
     return kb
@@ -789,7 +789,6 @@ TASKS = [
     {"name": "🎲💰 Кости на удачу", "reward": 12, "game": "diceluck"},
     {"name": "🔢 Угадай число", "reward": 5, "game": "number"},
     {"name": "✂️ Камень-ножницы", "reward": 5, "game": "rps"},
-    {"name": "🔮 Оракул", "reward": 5, "game": "oracle"},
     {"name": "🎴 Карты и Джокер", "reward": 10, "game": "cards"},
     {"name": "🎰 Слоты", "reward": 10, "game": "slots"},
     {"name": "💎 Камень-мешок-монета", "reward": 5, "game": "rps2"},
@@ -797,7 +796,8 @@ TASKS = [
     {"name": "📈 Выше/Ниже", "reward": 8, "game": "highlow"},
     {"name": "🔫 Русская рулетка", "reward": 20, "game": "roulette"},
     {"name": "🔥 Горячо/Холодно", "reward": 15, "game": "hotcold"},
-    {"name": "🎯 Быки и коровы", "reward": 20, "game": "bullscows"}
+    {"name": "🎯 Быки и коровы", "reward": 20, "game": "bullscows"},
+    {"name": "🎲 Чет/Нечет", "reward": 8, "game": "evenodd"}
 ]
 
 def get_random_task():
@@ -1054,6 +1054,35 @@ def dice_luck_handler(uid):
         bot.send_message(uid, f"🎲💰 {rolls_str} = {total}. {get_phrase(lang, 'lose').format(2)}")
     complete_task(uid, "diceluck")
 
+# ========== НОВАЯ ИГРА: ЧЕТ/НЕЧЕТ (ВМЕСТО ОРАКУЛА) ==========
+def gamble_evenodd_handler(uid):
+    bot.send_message(uid, "🎲 *Чет/Нечет*\nЯ загадал число от 1 до 10. Угадай, оно *чётное* или *нечётное*?", parse_mode="Markdown")
+    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_evenodd_play(m, uid))
+
+def gamble_evenodd_play(m, uid):
+    lang = get_user(uid).get("active_language", "normal")
+    choice = m.text.lower()
+    if choice not in ["чётное", "нечётное", "четное", "нечетное"]:
+        bot.send_message(uid, "❌ Напиши 'чётное' или 'нечётное'")
+        return
+    if not remove_coins(uid, 1):
+        bot.send_message(uid, get_phrase(lang, "no_coins"))
+        return
+    
+    number = random.randint(1, 10)
+    is_even = number % 2 == 0
+    correct = "чётное" if is_even else "нечётное"
+    
+    if (choice in ["чётное", "четное"] and is_even) or (choice in ["нечётное", "нечетное"] and not is_even):
+        win = random.randint(3, 5)
+        add_coins(uid, win)
+        bot.send_message(uid, f"🎲 Загадано число {number} ({correct}). {get_phrase(lang, 'win').format(win)}")
+    else:
+        remove_coins(uid, 1)
+        bot.send_message(uid, f"🎲 Загадано число {number} ({correct}). {get_phrase(lang, 'lose').format(2)}")
+    
+    complete_task(uid, "evenodd")
+
 # ========== ОСТАЛЬНЫЕ ИГРЫ ==========
 def gamble_number_handler(uid):
     bot.send_message(uid, "🔢 Введи число от 1 до 20:")
@@ -1106,28 +1135,6 @@ def gamble_rps_play(m, uid):
         remove_coins(uid, 1)
         bot.send_message(uid, get_phrase(lang, "lose").format(2))
     complete_task(uid, "rps")
-
-def gamble_oracle_handler(uid):
-    bot.send_message(uid, "🔮 Да или Нет?")
-    bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_oracle_play(m, uid))
-
-def gamble_oracle_play(m, uid):
-    lang = get_user(uid).get("active_language", "normal")
-    user_ans = m.text.lower()
-    if user_ans not in ["да", "нет"]:
-        bot.send_message(uid, "❌ Да или Нет")
-        return
-    if not remove_coins(uid, 1):
-        bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return
-    oracle = random.choice(["да", "нет"])
-    if user_ans == oracle:
-        add_coins(uid, 3)
-        bot.send_message(uid, f"🔮 Оракул сказал {oracle}. {get_phrase(lang, 'win').format(3)}")
-    else:
-        remove_coins(uid, 1)
-        bot.send_message(uid, f"🔮 Оракул сказал {oracle}. {get_phrase(lang, 'lose').format(2)}")
-    complete_task(uid, "oracle")
 
 def gamble_cards_handler(uid):
     bot.send_message(uid, "🎴 *Карты и Джокер*\n1️⃣ ♠️ | 2️⃣ ♥️ | 3️⃣ ♣️ | 4️⃣ ♦️ | 5️⃣ 🃏\nВведи номер карты (1–5):", parse_mode="Markdown")
@@ -1625,8 +1632,6 @@ def callback_handler(call):
             gamble_number_handler(uid)
         elif data == "gamble_rps":
             gamble_rps_handler(uid)
-        elif data == "gamble_oracle":
-            gamble_oracle_handler(uid)
         elif data == "gamble_cards":
             gamble_cards_handler(uid)
         elif data == "gamble_slots":
@@ -1643,6 +1648,8 @@ def callback_handler(call):
             gamble_hotcold_handler(uid)
         elif data == "gamble_bullscows":
             gamble_bullscows_handler(uid)
+        elif data == "gamble_evenodd":
+            gamble_evenodd_handler(uid)
 
 if __name__ == "__main__":
     print("✅ ФИНАЛЬНАЯ ВЕРСИЯ БОТА ЗАПУЩЕНА!")
