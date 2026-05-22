@@ -36,7 +36,7 @@ def get_user_cache(uid):
     return None
 
 def set_user_cache(uid, user_data):
-    r.setex(f"user:{uid}", 600, json.dumps(user_data))  # 10 минут
+    r.setex(f"user:{uid}", 600, json.dumps(user_data))
 
 def delete_user_cache(uid):
     r.delete(f"user:{uid}")
@@ -153,15 +153,6 @@ def take_task_reward(uid):
     conn.close()
     return 0
 
-def reset_daily_tasks():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET task_completed = FALSE, task_reward_taken = FALSE")
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("✅ Ежедневные задания сброшены")
-
 # ========== РЕФЕРАЛЬНАЯ СИСТЕМА ==========
 def get_referral_link(uid):
     bot_info = bot.get_me()
@@ -193,6 +184,22 @@ def get_referral_stats(uid):
     cur.close()
     conn.close()
     return count
+
+# ========== СТАТИСТИКА ПО РЕГИОНУ ==========
+def get_region_stats(region):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM users WHERE region = %s", (region,))
+    total_users = cur.fetchone()[0]
+    cur.execute("SELECT SUM(coins) FROM users WHERE region = %s", (region,))
+    total_coins = cur.fetchone()[0] or 0
+    avg_coins = total_coins / total_users if total_users > 0 else 0
+    cur.execute("SELECT user_id, coins, username FROM users WHERE region = %s ORDER BY coins DESC LIMIT 3", (region,))
+    top = cur.fetchall()
+    top_text = "\n".join([f"{i+1}. {row[2] or row[0][:8]} — {row[1]}💰" for i, row in enumerate(top)])
+    cur.close()
+    conn.close()
+    return total_users, total_coins, avg_coins, top_text
 
 # ========== ОСНОВНЫЕ ФУНКЦИИ ==========
 def get_user(uid):
@@ -280,13 +287,14 @@ def format_profile(uid):
     theme = user.get("theme", "🎲")
     effect = user.get("effect", "")
     effect_str = f" {effect}" if effect else ""
+    region = user.get("region") or "Не выбран"
     task = get_user_task(uid)
     task_status = "✅" if task["completed"] and not task["reward_taken"] else "❌" if not task["completed"] else "🎁"
     return (
         f"┌─────────────────────┐\n"
         f"│  👤 *{user.get('username') or 'Игрок'}*{effect_str}\n"
         f"│  💰 Баланс: `{user['coins']}` монет\n"
-        f"│  📍 Регион: {user.get('region') or '❓'}\n"
+        f"│  📍 Регион: {region}\n"
         f"│  🎮 Играет: {user.get('current_game') or 'нет'}\n"
         f"│  🎨 Тема: {theme}\n"
         f"│  📋 Задание: {task['name']} {task_status}\n"
@@ -310,6 +318,8 @@ def main_keyboard(uid):
         KeyboardButton(f"❌⭕ Крестики-нолики"),
         KeyboardButton(f"🛒 Магазин"),
         KeyboardButton(f"📊 Моя статистика"),
+        KeyboardButton(f"📍 Мой регион"),
+        KeyboardButton(f"📈 Статистика региона"),
         KeyboardButton(f"🎁 Бонус"),
         KeyboardButton(f"❓ Вопрос"),
         KeyboardButton(f"👥 Рефералы")
@@ -342,11 +352,43 @@ def start(m):
     if m.from_user.username:
         update_user(uid, username=m.from_user.username.lower())
     
-    if not user.get("region"):
-        bot.send_message(uid, "🌍 *Выбери свой регион:*", reply_markup=region_keyboard(), parse_mode="Markdown")
-    else:
-        bot.send_message(uid, f"🎉 *Добро пожаловать в игровой портал!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
+    bot.send_message(uid, f"🎉 *Добро пожаловать в игровой портал!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
 
+# ========== ВЫБОР РЕГИОНА (свободный, без принуждения) ==========
+@bot.message_handler(func=lambda m: m.text == "📍 Мой регион")
+def choose_region(m):
+    uid = m.chat.id
+    bot.send_message(uid, "🌍 *Выбери свой регион:*", reply_markup=region_keyboard(), parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.text in REGIONS)
+def save_region(m):
+    uid = m.chat.id
+    region = m.text
+    update_user(uid, region=region)
+    bot.send_message(uid, f"✅ Регион *{region}* сохранён!", parse_mode="Markdown")
+    bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
+
+# ========== СТАТИСТИКА РЕГИОНА ==========
+@bot.message_handler(func=lambda m: m.text == "📈 Статистика региона")
+def show_region_stats(m):
+    uid = m.chat.id
+    user = get_user(uid)
+    region = user.get("region")
+    if not region:
+        bot.send_message(uid, "❌ *Сначала выбери свой регион!*\nНажми на кнопку *📍 Мой регион*", parse_mode="Markdown")
+        return
+    
+    total_users, total_coins, avg_coins, top_text = get_region_stats(region)
+    if total_users == 0:
+        bot.send_message(uid, f"📊 *Статистика региона {region}*\n\nПока нет игроков в этом регионе", parse_mode="Markdown")
+    else:
+        bot.send_message(uid, f"📊 *Статистика региона {region}*\n\n"
+                              f"👥 Игроков: {total_users}\n"
+                              f"💰 Всего монет: {total_coins}\n"
+                              f"📈 Средний баланс: {avg_coins:.2f}\n\n"
+                              f"🏆 *Топ-3 игроков региона:*\n{top_text}", parse_mode="Markdown")
+
+# ========== ОСНОВНОЙ ОБРАБОТЧИК КНОПОК ==========
 @bot.message_handler(func=lambda m: True)
 def handle_buttons(m):
     uid = m.chat.id
@@ -495,11 +537,13 @@ def my_stats(uid):
     if task["completed"] and not task["reward_taken"]:
         task_btn = "\n\n🎁 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!"
     
+    region = user.get("region") or "Не выбран"
+    
     bot.send_message(uid, f"📊 *Твоя статистика*\n\n"
                           f"👤 Имя: {user.get('username') or 'Игрок'}\n"
-                          f"📍 Регион: {user.get('region') or '?'}\n"
+                          f"📍 Регион: {region}\n"
                           f"💰 Баланс: {user['coins']}\n"
-                          f"🏆 Место: {place}\n"
+                          f"🏆 Место в мире: {place}\n"
                           f"🎮 Играет: {user.get('current_game') or 'нет'}\n"
                           f"🎨 Тема: {user.get('theme', '🎲')}\n"
                           f"✨ Эффект: {user.get('effect') or 'нет'}\n"
@@ -901,5 +945,5 @@ def callback_handler(call):
         tictac_move(uid, int(i), int(j))
 
 if __name__ == "__main__":
-    print("✅ Бот полностью запущен")
+    print("✅ Бот с выбором региона и статистикой по региону запущен")
     bot.infinity_polling(skip_pending=True)
