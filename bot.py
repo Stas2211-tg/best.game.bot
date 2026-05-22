@@ -36,7 +36,7 @@ def get_user_cache(uid):
     return None
 
 def set_user_cache(uid, user_data):
-    r.setex(f"user:{uid}", 600, json.dumps(user_data))  # 10 минут
+    r.setex(f"user:{uid}", 3600, json.dumps(user_data))  # 10 минут
 
 def delete_user_cache(uid):
     r.delete(f"user:{uid}")
