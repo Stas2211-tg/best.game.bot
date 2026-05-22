@@ -319,7 +319,6 @@ def get_phrase(lang, phrase_key):
             "back": "НАЗАД"
         }
     }
-    # Заполняем недостающие языки базовыми значениями
     if lang not in phrases:
         return phrases["normal"].get(phrase_key, "")
     return phrases[lang].get(phrase_key, phrases["normal"].get(phrase_key, ""))
@@ -719,12 +718,12 @@ def save_region(m):
     bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
 
 # ========== ПРОФИЛЬ И ПОИСК ==========
-@bot.message_handler(func=lambda m: get_phrase(get_user(m.chat.id).get("active_language", "normal"), "profile") in m.text and "profile" in globals())
+@bot.message_handler(func=lambda m: m.text == "👤 Профиль" or get_phrase(get_user(m.chat.id).get("active_language", "normal"), "profile") in m.text)
 def my_profile(m):
     uid = m.chat.id
     bot.send_message(uid, format_profile(uid), parse_mode="Markdown")
 
-@bot.message_handler(func=lambda m: get_phrase(get_user(m.chat.id).get("active_language", "normal"), "find") in m.text)
+@bot.message_handler(func=lambda m: m.text == "🔍 Найти игрока" or get_phrase(get_user(m.chat.id).get("active_language", "normal"), "find") in m.text)
 def find_player(m):
     uid = m.chat.id
     bot.send_message(uid, "✍️ Введи @username игрока:")
@@ -743,7 +742,7 @@ def process_find_player(m):
     
     waiting_for_username[uid] = False
 
-@bot.message_handler(func=lambda m: get_phrase(get_user(m.chat.id).get("active_language", "normal"), "commands") in m.text)
+@bot.message_handler(func=lambda m: m.text == "📋 Все команды" or get_phrase(get_user(m.chat.id).get("active_language", "normal"), "commands") in m.text)
 def show_commands(m):
     uid = m.chat.id
     bot.send_message(uid, commands_list(uid), parse_mode="Markdown")
@@ -1120,7 +1119,8 @@ def gamble_oracle_play(m, uid):
         return
     if not remove_coins(uid, 1):
         bot.send_message(uid, get_phrase(lang, "no_coins"))
-        return    oracle = random.choice(["да", "нет"])
+        return
+    oracle = random.choice(["да", "нет"])
     if user_ans == oracle:
         add_coins(uid, 3)
         bot.send_message(uid, f"🔮 Оракул сказал {oracle}. {get_phrase(lang, 'win').format(3)}")
@@ -1352,7 +1352,6 @@ def gamble_bullscows_play(m, uid):
 # ========== ГРУППОВЫЕ КОМАНДЫ ==========
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "команды")
 def group_commands(m):
-    lang = "normal"
     bot.send_message(m.chat.id, 
         "📋 *Команды для группы:*\n\n"
         "• топ — топ игроков группы\n"
@@ -1371,7 +1370,6 @@ def group_top(m):
     cur.execute("""
         SELECT u.user_id, u.coins, u.username 
         FROM users u 
-        WHERE u.user_id IN (SELECT user_id FROM referrals) 
         ORDER BY u.coins DESC LIMIT 5
     """)
     top = cur.fetchall()
@@ -1427,7 +1425,6 @@ def group_bonus(m):
         return
     
     group_bonus_tracker[chat_id] = now
-    # В реальном боте нужно получить список активных участников группы
     bot.send_message(chat_id, "🎁 *Групповой бонус активирован!*\nВсе активные участники получили +5💰", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.chat.type in ["group", "supergroup"] and m.text.lower() == "статистика")
