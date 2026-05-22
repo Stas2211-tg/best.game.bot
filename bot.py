@@ -5,7 +5,8 @@ import os
 from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from cachetools import TTLCache
+import redis
+import json
 
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
@@ -14,9 +15,10 @@ if not TOKEN:
 
 ADMIN_ID = int(os.getenv("ADMIN_ID", 123456789))
 DATABASE_URL = os.getenv("DATABASE_URL")
+REDIS_URL = os.getenv("REDIS_URL")
 
-if not DATABASE_URL:
-    print("❌ DATABASE_URL не найден")
+if not DATABASE_URL or not REDIS_URL:
+    print("❌ DATABASE_URL или REDIS_URL не найден")
     exit(1)
 
 bot = telebot.TeleBot(TOKEN)
@@ -24,8 +26,22 @@ games_data = {}
 waiting_for_question = {}
 admin_actions = {}
 
-user_cache = TTLCache(maxsize=10000, ttl=600)
+# ========== РАБОТА С REDIS ==========
+r = redis.from_url(REDIS_URL, decode_responses=True)
 
+def get_user_cache(uid):
+    data = r.get(f"user:{uid}")
+    if data:
+        return json.loads(data)
+    return None
+
+def set_user_cache(uid, user_data):
+    r.setex(f"user:{uid}", 600, json.dumps(user_data))  # 10 минут
+
+def delete_user_cache(uid):
+    r.delete(f"user:{uid}")
+
+# ========== БАЗА ДАННЫХ ==========
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
@@ -41,7 +57,19 @@ def init_db():
             region TEXT,
             current_game TEXT,
             theme TEXT DEFAULT '🎲',
-            effect TEXT
+            effect TEXT,
+            referrer TEXT,
+            daily_task TEXT,
+            task_completed BOOLEAN DEFAULT FALSE,
+            task_reward_taken BOOLEAN DEFAULT FALSE
+        )
+    """)
+    # Таблица для рефералов
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS referrals (
+            user_id TEXT,
+            referrer_id TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
         )
     """)
     conn.commit()
@@ -50,10 +78,134 @@ def init_db():
 
 init_db()
 
+# ========== ЕЖЕДНЕВНЫЕ ЗАДАНИЯ ==========
+TASKS = [
+    {"name": "🎲 Сыграй в 'Угадай кубик'", "reward": 5, "game": "dice1"},
+    {"name": "🎲🎲 Сыграй в 'Угадай сумму'", "reward": 5, "game": "dice2"},
+    {"name": "🔢 Сыграй в 'Угадай число'", "reward": 5, "game": "number"},
+    {"name": "✂️ Сыграй в 'Камень-ножницы'", "reward": 5, "game": "rps"},
+    {"name": "🔮 Спроси оракула", "reward": 5, "game": "oracle"},
+    {"name": "💣 Сыграй в Сапёр", "reward": 10, "game": "mines"},
+    {"name": "❌⭕ Сыграй в Крестики-нолики", "reward": 10, "game": "tictac"}
+]
+
+def get_random_task():
+    return random.choice(TASKS)
+
+def get_user_task(uid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT daily_task, task_completed, task_reward_taken FROM users WHERE user_id = %s", (str(uid),))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if result and result[0]:
+        return {"name": result[0], "completed": result[1], "reward_taken": result[2]}
+    else:
+        task = get_random_task()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET daily_task = %s, task_completed = FALSE, task_reward_taken = FALSE WHERE user_id = %s", (task["name"], str(uid)))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"name": task["name"], "completed": False, "reward_taken": False}
+
+def complete_task(uid, game_name):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT daily_task, task_completed, task_reward_taken FROM users WHERE user_id = %s", (str(uid),))
+    result = cur.fetchone()
+    if result and not result[1] and not result[2]:
+        task_name = result[0]
+        # Проверяем, соответствует ли игра заданию
+        for task in TASKS:
+            if task["name"] == task_name:
+                if (task["game"] == game_name) or (game_name == "any" and task["game"]):
+                    cur.execute("UPDATE users SET task_completed = TRUE WHERE user_id = %s", (str(uid),))
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                    return True
+    cur.close()
+    conn.close()
+    return False
+
+def take_task_reward(uid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT task_completed, task_reward_taken, daily_task FROM users WHERE user_id = %s", (str(uid),))
+    result = cur.fetchone()
+    if result and result[0] and not result[1]:
+        task_name = result[2]
+        reward = 0
+        for task in TASKS:
+            if task["name"] == task_name:
+                reward = task["reward"]
+                break
+        if reward > 0:
+            add_coins(uid, reward)
+            # Сбрасываем задание (на сегодня хватит)
+            cur.execute("UPDATE users SET task_reward_taken = TRUE WHERE user_id = %s", (str(uid),))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return reward
+    cur.close()
+    conn.close()
+    return 0
+
+def reset_daily_tasks():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET task_completed = FALSE, task_reward_taken = FALSE")
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("✅ Ежедневные задания сброшены")
+
+# ========== РЕФЕРАЛЬНАЯ СИСТЕМА ==========
+def get_referral_link(uid):
+    return f"https://t.me/{bot.get_me().username}?start=ref_{uid}"
+
+def process_referral(new_uid, referrer_id):
+    # Проверяем, что реферер существует и не равен новому пользователю
+    if str(new_uid) == str(referrer_id):
+        return False
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Проверяем, не был ли пользователь уже приглашён
+    cur.execute("SELECT * FROM referrals WHERE user_id = %s", (str(new_uid),))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return False
+    # Записываем реферала
+    cur.execute("INSERT INTO referrals (user_id, referrer_id) VALUES (%s, %s)", (str(new_uid), str(referrer_id)))
+    # Начисляем бонусы: новому 5 монет, рефереру 10
+    add_coins(new_uid, 5)
+    add_coins(referrer_id, 10)
+    conn.commit()
+    cur.close()
+    conn.close()
+    return True
+
+def get_referral_stats(uid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id = %s", (str(uid),))
+    count = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return count
+
+# ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
 def get_user(uid):
     uid = str(uid)
-    if uid in user_cache:
-        return user_cache[uid]
+    cached = get_user_cache(uid)
+    if cached:
+        return cached
     
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -61,8 +213,8 @@ def get_user(uid):
     user = cur.fetchone()
     if not user:
         cur.execute("""
-            INSERT INTO users (user_id, coins, last_bonus, username, region, current_game, theme, effect)
-            VALUES (%s, 5, NULL, NULL, NULL, NULL, '🎲', NULL)
+            INSERT INTO users (user_id, coins, last_bonus, username, region, current_game, theme, effect, referrer, daily_task, task_completed, task_reward_taken)
+            VALUES (%s, 5, NULL, NULL, NULL, NULL, '🎲', NULL, NULL, NULL, FALSE, FALSE)
         """, (uid,))
         conn.commit()
         cur.execute("SELECT * FROM users WHERE user_id = %s", (uid,))
@@ -70,7 +222,7 @@ def get_user(uid):
     cur.close()
     conn.close()
     
-    user_cache[uid] = user
+    set_user_cache(uid, user)
     return user
 
 def update_user(uid, **kwargs):
@@ -82,10 +234,7 @@ def update_user(uid, **kwargs):
     conn.commit()
     cur.close()
     conn.close()
-    
-    if uid in user_cache:
-        for key, value in kwargs.items():
-            user_cache[uid][key] = value
+    delete_user_cache(uid)
 
 def add_coins(uid, amount):
     user = get_user(uid)
@@ -137,6 +286,8 @@ def format_profile(uid):
     theme = user.get("theme", "🎲")
     effect = user.get("effect", "")
     effect_str = f" {effect}" if effect else ""
+    task = get_user_task(uid)
+    task_status = "✅" if task["completed"] and not task["reward_taken"] else "❌" if not task["completed"] else "🎁" if task["completed"] and not task["reward_taken"] else "✅"
     return (
         f"┌─────────────────────┐\n"
         f"│  👤 *{user.get('username') or 'Игрок'}*{effect_str}\n"
@@ -144,10 +295,11 @@ def format_profile(uid):
         f"│  📍 Регион: {user.get('region') or '❓'}\n"
         f"│  🎮 Играет: {user.get('current_game') or 'нет'}\n"
         f"│  🎨 Тема: {theme}\n"
+        f"│  📋 Задание: {task['name']} {task_status}\n"
         f"└─────────────────────┘"
     )
 
-# ========== РЕГИОН (только Россия и соседи) ==========
+# ========== РЕГИОНЫ ==========
 REGIONS = ["🇷🇺 Россия", "🇺🇦 Украина", "🇧🇾 Беларусь", "🇰🇿 Казахстан", "🇦🇲 Армения", "🇬🇪 Грузия", "🇺🇿 Узбекистан"]
 
 def region_keyboard():
@@ -155,7 +307,6 @@ def region_keyboard():
     kb.add(*[KeyboardButton(r) for r in REGIONS])
     return kb
 
-# ========== КЛАВИАТУРЫ ==========
 def main_keyboard(uid):
     user = get_user(uid)
     theme = user.get("theme", "🎲")
@@ -167,7 +318,8 @@ def main_keyboard(uid):
         KeyboardButton(f"🛒 Магазин"),
         KeyboardButton(f"📊 Моя статистика"),
         KeyboardButton(f"🎁 Бонус"),
-        KeyboardButton(f"❓ Вопрос")
+        KeyboardButton(f"❓ Вопрос"),
+        KeyboardButton(f"👥 Рефералы")
     )
     if uid == ADMIN_ID:
         kb.add(KeyboardButton(f"🔧 Админ"))
@@ -185,10 +337,15 @@ def admin_keyboard():
     )
     return kb
 
-# ========== ОСНОВНЫЕ КОМАНДЫ ==========
 @bot.message_handler(commands=['start'])
 def start(m):
     uid = m.chat.id
+    # Обработка реферальной ссылки
+    args = m.text.split()
+    if len(args) > 1 and args[1].startswith("ref_"):
+        referrer_id = args[1].split("_")[1]
+        process_referral(uid, referrer_id)
+    
     user = get_user(uid)
     if m.from_user.username:
         update_user(uid, username=m.from_user.username.lower())
@@ -197,16 +354,6 @@ def start(m):
         bot.send_message(uid, "🌍 *Выбери свой регион:*", reply_markup=region_keyboard(), parse_mode="Markdown")
     else:
         bot.send_message(uid, f"🎉 *Добро пожаловать в игровой портал!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
-
-@bot.message_handler(func=lambda m: user_data.get(str(m.chat.id), {}).get("region") is None)
-def set_region_handler(m):
-    uid = m.chat.id
-    if m.text in REGIONS:
-        update_user(uid, region=m.text)
-        bot.send_message(uid, f"✅ Регион *{m.text}* сохранён!", parse_mode="Markdown")
-        bot.send_message(uid, f"🎉 *Добро пожаловать!*\n\n{format_profile(uid)}", reply_markup=main_keyboard(uid), parse_mode="Markdown")
-    else:
-        bot.send_message(uid, "Пожалуйста, выбери регион из кнопок 👇", reply_markup=region_keyboard())
 
 @bot.message_handler(func=lambda m: True)
 def handle_buttons(m):
@@ -233,6 +380,14 @@ def handle_buttons(m):
     elif text == "❓ Вопрос":
         bot.send_message(uid, "✍️ Напиши свой вопрос. Админ ответит.")
         waiting_for_question[uid] = True
+    elif text == "👥 Рефералы":
+        ref_link = get_referral_link(uid)
+        ref_count = get_referral_stats(uid)
+        bot.send_message(uid, f"👥 *Реферальная система*\n\n"
+                              f"💰 За каждого приглашённого друга ты получаешь 10 монет, друг — 5 монет!\n\n"
+                              f"📎 Твоя ссылка: `{ref_link}`\n"
+                              f"👥 Приглашено друзей: {ref_count}\n\n"
+                              f"Поделись ссылкой с друзьями!", parse_mode="Markdown")
     elif text == "🔧 Админ" and uid == ADMIN_ID:
         admin_panel(uid)
     elif uid == ADMIN_ID and text in ["💰 Выдать монеты", "🔻 Забрать монеты", "👥 Все пользователи", "📢 Рассылка", "📊 Глобальная статистика", "🔙 Назад"]:
@@ -329,7 +484,6 @@ def send_answer(m, target_id):
     bot.send_message(int(target_id), f"📬 *Ответ:*\n{m.text}", parse_mode="Markdown")
     bot.send_message(ADMIN_ID, f"✅ Ответ отправлен {target_id}")
 
-# ========== МОЯ СТАТИСТИКА ==========
 def my_stats(uid):
     user = get_user(uid)
     all_users = all_users_list()
@@ -338,6 +492,18 @@ def my_stats(uid):
         place = sorted_users.index(str(uid)) + 1
     except:
         place = "?"
+    
+    task = get_user_task(uid)
+    task_reward = 0
+    for t in TASKS:
+        if t["name"] == task["name"]:
+            task_reward = t["reward"]
+            break
+    
+    task_btn = ""
+    if task["completed"] and not task["reward_taken"]:
+        task_btn = "\n\n🎁 *Задание выполнено!* Нажми /take_reward, чтобы получить награду!"
+    
     bot.send_message(uid, f"📊 *Твоя статистика*\n\n"
                           f"👤 Имя: {user.get('username') or 'Игрок'}\n"
                           f"📍 Регион: {user.get('region') or '?'}\n"
@@ -345,7 +511,19 @@ def my_stats(uid):
                           f"🏆 Место: {place}\n"
                           f"🎮 Играет: {user.get('current_game') or 'нет'}\n"
                           f"🎨 Тема: {user.get('theme', '🎲')}\n"
-                          f"✨ Эффект: {user.get('effect') or 'нет'}", parse_mode="Markdown")
+                          f"✨ Эффект: {user.get('effect') or 'нет'}\n"
+                          f"📋 Задание: {task['name']} — награда {task_reward}💰\n"
+                          f"Статус: {'✅ Выполнено' if task['completed'] else '❌ Не выполнено'}{task_btn}", parse_mode="Markdown")
+
+@bot.message_handler(commands=['take_reward'])
+def take_reward(m):
+    uid = m.chat.id
+    reward = take_task_reward(uid)
+    if reward > 0:
+        bot.send_message(uid, f"🎁 Ты получил {reward}💰 за выполнение задания!")
+        bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
+    else:
+        bot.send_message(uid, "❌ Задание ещё не выполнено или награда уже получена!")
 
 # ========== МЕНЮ ИГР ==========
 def gamble_menu(uid):
@@ -374,7 +552,7 @@ def shop_menu(uid):
                           f"🔥 Огонь — меняет иконку меню на 🔥\n"
                           f"✨ Молния — добавляет ⚡ в профиль", reply_markup=kb, parse_mode="Markdown")
 
-# ========== ИГРЫ (Казино) ==========
+# ========== ИГРЫ (Казино) с обновлением заданий ==========
 def gamble_dice1_handler(uid):
     bot.send_message(uid, "🎲 Введи число от 1 до 6:")
     bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_dice1_play(m, uid))
@@ -396,6 +574,9 @@ def gamble_dice1_play(m, uid):
         else:
             remove_coins(uid, 1)
             bot.send_message(uid, f"🎲 {roll}. Проиграл 2💰")
+        # Обновляем задание
+        if complete_task(uid, "dice1"):
+            bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
     except:
         bot.send_message(uid, "❌ Число")
 
@@ -421,6 +602,8 @@ def gamble_dice2_play(m, uid):
         else:
             remove_coins(uid, 1)
             bot.send_message(uid, f"🎲 {d1}+{d2}={total}. Проиграл 2💰")
+        if complete_task(uid, "dice2"):
+            bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
     except:
         bot.send_message(uid, "❌ Число")
 
@@ -445,6 +628,8 @@ def gamble_number_play(m, uid):
         else:
             remove_coins(uid, 1)
             bot.send_message(uid, f"🔢 {secret}. Проиграл 2💰")
+        if complete_task(uid, "number"):
+            bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
     except:
         bot.send_message(uid, "❌ Число")
 
@@ -471,6 +656,8 @@ def gamble_rps_play(m, uid):
     else:
         remove_coins(uid, 1)
         bot.send_message(uid, f"Поражение. -2💰")
+    if complete_task(uid, "rps"):
+        bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
 
 def gamble_oracle_handler(uid):
     bot.send_message(uid, "🔮 Да или Нет?")
@@ -491,6 +678,8 @@ def gamble_oracle_play(m, uid):
     else:
         remove_coins(uid, 1)
         bot.send_message(uid, f"🔮 {oracle}. Ошибка. -2💰")
+    if complete_task(uid, "oracle"):
+        bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
 
 # ========== САПЁР ==========
 def mines_menu(uid):
@@ -545,6 +734,8 @@ def mines_click(uid, i, j):
         bot.send_message(uid, f"💥 Ты наступил на мину! -3💰")
         remove_coins(uid, 3)
         del games_data[uid]
+        if complete_task(uid, "mines"):
+            bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
         return
     if data["field"][i][j] != "?":
         return
@@ -555,6 +746,8 @@ def mines_click(uid, i, j):
         bot.send_message(uid, f"🏆 Ты прошёл всё поле! +5💰")
         add_coins(uid, 5)
         del games_data[uid]
+        if complete_task(uid, "mines"):
+            bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
         return
     mines_show(uid)
 
@@ -642,6 +835,8 @@ def tictac_move(uid, i, j):
         if data["mode"] == "friend" and data["players"].get("O"):
             bot.send_message(data["players"]["O"], f"🏆 Победа {winner}!")
         del games_data[uid]
+        if complete_task(uid, "tictac"):
+            bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
         return
     if all(data["field"][r][c] != " " for r in range(3) for c in range(3)):
         bot.send_message(uid, "Ничья! Монеты возвращены")
@@ -650,6 +845,8 @@ def tictac_move(uid, i, j):
             add_coins(data["players"]["O"], 1)
             bot.send_message(data["players"]["O"], "Ничья!")
         del games_data[uid]
+        if complete_task(uid, "tictac"):
+            bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
         return
     data["turn"] = "O" if data["turn"] == "X" else "X"
     tictac_show(uid)
@@ -726,5 +923,5 @@ def callback_handler(call):
         tictac_move(uid, int(i), int(j))
 
 if __name__ == "__main__":
-    print("✅ Бот с магазином и регионами запущен")
+    print("✅ Бот с рефералкой, заданиями и Redis запущен")
     bot.infinity_polling(skip_pending=True)
