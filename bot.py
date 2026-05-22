@@ -36,7 +36,7 @@ def get_user_cache(uid):
     return None
 
 def set_user_cache(uid, user_data):
-    r.setex(f"user:{uid}", 3600, json.dumps(user_data))  # 10 минут
+    r.setex(f"user:{uid}", 600, json.dumps(user_data))  # 10 минут
 
 def delete_user_cache(uid):
     r.delete(f"user:{uid}")
@@ -64,7 +64,6 @@ def init_db():
             task_reward_taken BOOLEAN DEFAULT FALSE
         )
     """)
-    # Таблица для рефералов
     cur.execute("""
         CREATE TABLE IF NOT EXISTS referrals (
             user_id TEXT,
@@ -119,7 +118,6 @@ def complete_task(uid, game_name):
     result = cur.fetchone()
     if result and not result[1] and not result[2]:
         task_name = result[0]
-        # Проверяем, соответствует ли игра заданию
         for task in TASKS:
             if task["name"] == task_name:
                 if (task["game"] == game_name) or (game_name == "any" and task["game"]):
@@ -146,7 +144,6 @@ def take_task_reward(uid):
                 break
         if reward > 0:
             add_coins(uid, reward)
-            # Сбрасываем задание (на сегодня хватит)
             cur.execute("UPDATE users SET task_reward_taken = TRUE WHERE user_id = %s", (str(uid),))
             conn.commit()
             cur.close()
@@ -167,23 +164,20 @@ def reset_daily_tasks():
 
 # ========== РЕФЕРАЛЬНАЯ СИСТЕМА ==========
 def get_referral_link(uid):
-    return f"https://t.me/{bot.get_me().username}?start=ref_{uid}"
+    bot_info = bot.get_me()
+    return f"https://t.me/{bot_info.username}?start=ref_{uid}"
 
 def process_referral(new_uid, referrer_id):
-    # Проверяем, что реферер существует и не равен новому пользователю
     if str(new_uid) == str(referrer_id):
         return False
     conn = get_db_connection()
     cur = conn.cursor()
-    # Проверяем, не был ли пользователь уже приглашён
     cur.execute("SELECT * FROM referrals WHERE user_id = %s", (str(new_uid),))
     if cur.fetchone():
         cur.close()
         conn.close()
         return False
-    # Записываем реферала
     cur.execute("INSERT INTO referrals (user_id, referrer_id) VALUES (%s, %s)", (str(new_uid), str(referrer_id)))
-    # Начисляем бонусы: новому 5 монет, рефереру 10
     add_coins(new_uid, 5)
     add_coins(referrer_id, 10)
     conn.commit()
@@ -200,7 +194,7 @@ def get_referral_stats(uid):
     conn.close()
     return count
 
-# ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
+# ========== ОСНОВНЫЕ ФУНКЦИИ ==========
 def get_user(uid):
     uid = str(uid)
     cached = get_user_cache(uid)
@@ -287,7 +281,7 @@ def format_profile(uid):
     effect = user.get("effect", "")
     effect_str = f" {effect}" if effect else ""
     task = get_user_task(uid)
-    task_status = "✅" if task["completed"] and not task["reward_taken"] else "❌" if not task["completed"] else "🎁" if task["completed"] and not task["reward_taken"] else "✅"
+    task_status = "✅" if task["completed"] and not task["reward_taken"] else "❌" if not task["completed"] else "🎁"
     return (
         f"┌─────────────────────┐\n"
         f"│  👤 *{user.get('username') or 'Игрок'}*{effect_str}\n"
@@ -299,7 +293,6 @@ def format_profile(uid):
         f"└─────────────────────┘"
     )
 
-# ========== РЕГИОНЫ ==========
 REGIONS = ["🇷🇺 Россия", "🇺🇦 Украина", "🇧🇾 Беларусь", "🇰🇿 Казахстан", "🇦🇲 Армения", "🇬🇪 Грузия", "🇺🇿 Узбекистан"]
 
 def region_keyboard():
@@ -340,7 +333,6 @@ def admin_keyboard():
 @bot.message_handler(commands=['start'])
 def start(m):
     uid = m.chat.id
-    # Обработка реферальной ссылки
     args = m.text.split()
     if len(args) > 1 and args[1].startswith("ref_"):
         referrer_id = args[1].split("_")[1]
@@ -398,7 +390,6 @@ def handle_buttons(m):
     else:
         bot.send_message(uid, "❌ Используй кнопки меню 👇")
 
-# ========== АДМИН-ПАНЕЛЬ ==========
 def admin_panel(uid):
     bot.send_message(uid, "🔧 *Админ-панель*", reply_markup=admin_keyboard(), parse_mode="Markdown")
 
@@ -502,7 +493,7 @@ def my_stats(uid):
     
     task_btn = ""
     if task["completed"] and not task["reward_taken"]:
-        task_btn = "\n\n🎁 *Задание выполнено!* Нажми /take_reward, чтобы получить награду!"
+        task_btn = "\n\n🎁 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!"
     
     bot.send_message(uid, f"📊 *Твоя статистика*\n\n"
                           f"👤 Имя: {user.get('username') or 'Игрок'}\n"
@@ -525,7 +516,6 @@ def take_reward(m):
     else:
         bot.send_message(uid, "❌ Задание ещё не выполнено или награда уже получена!")
 
-# ========== МЕНЮ ИГР ==========
 def gamble_menu(uid):
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
@@ -552,7 +542,6 @@ def shop_menu(uid):
                           f"🔥 Огонь — меняет иконку меню на 🔥\n"
                           f"✨ Молния — добавляет ⚡ в профиль", reply_markup=kb, parse_mode="Markdown")
 
-# ========== ИГРЫ (Казино) с обновлением заданий ==========
 def gamble_dice1_handler(uid):
     bot.send_message(uid, "🎲 Введи число от 1 до 6:")
     bot.register_next_step_handler_by_chat_id(uid, lambda m: gamble_dice1_play(m, uid))
@@ -574,7 +563,6 @@ def gamble_dice1_play(m, uid):
         else:
             remove_coins(uid, 1)
             bot.send_message(uid, f"🎲 {roll}. Проиграл 2💰")
-        # Обновляем задание
         if complete_task(uid, "dice1"):
             bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
     except:
@@ -681,7 +669,6 @@ def gamble_oracle_play(m, uid):
     if complete_task(uid, "oracle"):
         bot.send_message(uid, "🎉 *Задание выполнено!* Напиши /take_reward, чтобы получить награду!", parse_mode="Markdown")
 
-# ========== САПЁР ==========
 def mines_menu(uid):
     kb = InlineKeyboardMarkup(row_width=3)
     kb.add(
@@ -751,7 +738,6 @@ def mines_click(uid, i, j):
         return
     mines_show(uid)
 
-# ========== КРЕСТИКИ-НОЛИКИ ==========
 def tictac_menu(uid):
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
@@ -864,7 +850,6 @@ def check_winner(f):
         return f[0][2]
     return None
 
-# ========== CALLBACK ==========
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     uid = call.message.chat.id
@@ -873,7 +858,6 @@ def callback_handler(call):
     if data == "back_main":
         bot.edit_message_text("Меню", uid, call.message.message_id)
         bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
-
     elif data.startswith("buy_theme_"):
         theme = data.split("_")[2]
         price = {"space": 20, "fire": 25}.get(theme, 0)
@@ -884,7 +868,6 @@ def callback_handler(call):
             bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
         else:
             bot.answer_callback_query(call.id, "❌ Нет монет")
-
     elif data == "buy_effect_lightning":
         if remove_coins(uid, 30):
             update_user(uid, effect="⚡")
@@ -892,7 +875,6 @@ def callback_handler(call):
             bot.send_message(uid, format_profile(uid), reply_markup=main_keyboard(uid), parse_mode="Markdown")
         else:
             bot.answer_callback_query(call.id, "❌ Нет монет")
-
     elif data.startswith("gamble_"):
         if data == "gamble_dice1":
             gamble_dice1_handler(uid)
@@ -904,24 +886,20 @@ def callback_handler(call):
             gamble_rps_handler(uid)
         elif data == "gamble_oracle":
             gamble_oracle_handler(uid)
-
     elif data.startswith("mines_"):
         size = int(data.split("_")[1])
         mines_start(uid, size)
-
     elif data.startswith("mines_click_"):
         _, _, i, j = data.split("_")
         mines_click(uid, int(i), int(j))
-
     elif data == "tictac_bot":
         tictac_start(uid, "bot")
     elif data == "tictac_friend":
         tictac_start(uid, "friend")
-
     elif data.startswith("tictac_move_"):
         _, _, i, j = data.split("_")
         tictac_move(uid, int(i), int(j))
 
 if __name__ == "__main__":
-    print("✅ Бот с рефералкой, заданиями и Redis запущен")
+    print("✅ Бот полностью запущен")
     bot.infinity_polling(skip_pending=True)
