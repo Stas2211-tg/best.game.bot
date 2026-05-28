@@ -1274,7 +1274,8 @@ def process_admin_gift_farm(m):
         biz_type = " ".join(parts[1:])
         if biz_type not in BUSINESSES:
             send_and_track(uid, f"❌ Ферма '{biz_type}' не найдена", user_id=uid)
-            return        if get_business(target_id, biz_type):
+            return
+        if get_business(target_id, biz_type):
             send_and_track(uid, f"❌ У пользователя уже есть {biz_type}", user_id=uid)
             return
         conn = get_db_connection()
