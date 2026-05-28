@@ -214,7 +214,7 @@ def format_profile(uid):
 # ========== ИНЛАЙН-КЛАВИАТУРЫ ==========
 REGIONS = ["🇷🇺 Россия", "🇺🇦 Украина", "🇧🇾 Беларусь", "🇰🇿 Казахстан"]
 
-def main_menu_keyboard():
+def main_menu_keyboard(user_id=None):
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
         InlineKeyboardButton("🎮 Игры", callback_data="games_menu"),
@@ -225,7 +225,7 @@ def main_menu_keyboard():
         InlineKeyboardButton("👥 Кланы", callback_data="clans_menu"),
         InlineKeyboardButton("❓ Вопрос", callback_data="ask_question")
     )
-    if str(uid) == str(ADMIN_ID):
+    if user_id and str(user_id) == str(ADMIN_ID):
         kb.add(InlineKeyboardButton("🔧 Админ-панель", callback_data="admin_panel"))
     return kb
 
@@ -1272,7 +1272,7 @@ def start(message):
             kb.add(InlineKeyboardButton(r, callback_data=f"region_{r}"))
         send_and_track(uid, "🌍 *Выбери регион:*", reply_markup=kb, parse_mode="Markdown", user_id=uid)
     else:
-        send_and_track(uid, f"🎉 *Добро пожаловать!*\n\n{format_profile(uid)}", reply_markup=main_menu_keyboard(), parse_mode="Markdown", user_id=uid)
+        send_and_track(uid, f"🎉 *Добро пожаловать!*\n\n{format_profile(uid)}", reply_markup=main_menu_keyboard(uid), parse_mode="Markdown", user_id=uid)
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
@@ -1284,15 +1284,15 @@ def callback_handler(call):
     if data.startswith("region_"):
         region = data.replace("region_", "")
         update_user(uid, region=region)
-        edit_message(uid, msg_id, f"✅ Регион *{region}* сохранён!\n\n{format_profile(uid)}", reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        edit_message(uid, msg_id, f"✅ Регион *{region}* сохранён!\n\n{format_profile(uid)}", reply_markup=main_menu_keyboard(uid), parse_mode="Markdown")
         return
 
     # Главное меню
     elif data == "back_main":
-        edit_message(uid, msg_id, format_profile(uid), reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        edit_message(uid, msg_id, format_profile(uid), reply_markup=main_menu_keyboard(uid), parse_mode="Markdown")
 
     elif data == "profile":
-        edit_message(uid, msg_id, format_profile(uid), reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        edit_message(uid, msg_id, format_profile(uid), reply_markup=main_menu_keyboard(uid), parse_mode="Markdown")
 
     elif data == "bonus":
         if can_take_bonus(uid):
@@ -1301,11 +1301,11 @@ def callback_handler(call):
             text = "🎁 +10 монет!"
         else:
             text = "⏳ Бонус уже получен. Завтра!"
-        edit_message(uid, msg_id, text, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        edit_message(uid, msg_id, text, reply_markup=main_menu_keyboard(uid), parse_mode="Markdown")
 
     elif data == "referrals":
         text = f"👥 *Рефералы*\n📎 {get_referral_link(uid)}\n👥 Приглашено: {get_referral_stats(uid)}"
-        edit_message(uid, msg_id, text, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        edit_message(uid, msg_id, text, reply_markup=main_menu_keyboard(uid), parse_mode="Markdown")
 
     elif data == "ask_question":
         send_and_track(uid, "✍️ Напиши вопрос:", user_id=uid)
@@ -1516,7 +1516,7 @@ def callback_handler(call):
     elif data == "clan_leave":
         ok, msg = leave_clan(uid)
         bot.answer_callback_query(call.id, msg, show_alert=True)
-        edit_message(uid, msg_id, format_profile(uid), reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        edit_message(uid, msg_id, format_profile(uid), reply_markup=main_menu_keyboard(uid), parse_mode="Markdown")
 
     # Админ-панель
     elif data == "admin_panel":
@@ -1595,7 +1595,7 @@ def clan_create_emoji(message, uid, name):
     emoji = message.text.strip()[:2]
     clan_id = create_clan(uid, name, emoji)
     if clan_id:
-        send_and_track(uid, f"✅ Клан *{name}* создан! ID: {clan_id}", reply_markup=main_menu_keyboard(), parse_mode="Markdown", user_id=uid)
+        send_and_track(uid, f"✅ Клан *{name}* создан! ID: {clan_id}", reply_markup=main_menu_keyboard(uid), parse_mode="Markdown", user_id=uid)
     else:
         send_and_track(uid, "❌ Клан с таким названием уже существует", user_id=uid)
 
@@ -1603,7 +1603,7 @@ def clan_join_id(message, uid):
     try:
         clan_id = int(message.text.strip())
         ok, msg = join_clan(uid, clan_id)
-        send_and_track(uid, msg, reply_markup=main_menu_keyboard(), user_id=uid)
+        send_and_track(uid, msg, reply_markup=main_menu_keyboard(uid), user_id=uid)
     except:
         send_and_track(uid, "❌ Введи числовой ID клана", user_id=uid)
 
@@ -1759,9 +1759,8 @@ def group_handlers(message):
             return
 
         user_role = get_group_role(chat_id, user_id)
-        # Проверка прав
+        # Если в группе нет президента, первый назначивший становится президентом
         if user_role == "member":
-            # Если в группе нет президента, первый назначивший становится президентом
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute("SELECT 1 FROM group_roles WHERE group_id = %s AND role = 'президент'", (str(chat_id),))
@@ -1861,7 +1860,6 @@ def group_handlers(message):
             send_and_track(chat_id, f"❌ @{target} не найден", user_id=user_id)
             return
         target_role = get_group_role(chat_id, target_uid)
-        # Нельзя банить вышестоящих
         if target_role == "президент":
             send_and_track(chat_id, "❌ Нельзя забанить президента!", user_id=user_id)
             return
@@ -2029,7 +2027,7 @@ def handle_question(message):
     uid = message.chat.id
     forward_question(uid, message.text)
     waiting_for_question[uid] = False
-    send_and_track(uid, "✅ Вопрос отправлен администратору!", reply_markup=main_menu_keyboard(), user_id=uid)
+    send_and_track(uid, "✅ Вопрос отправлен администратору!", reply_markup=main_menu_keyboard(uid), user_id=uid)
 
 if __name__ == "__main__":
     print("✅ БОТ ЗАПУЩЕН!")
