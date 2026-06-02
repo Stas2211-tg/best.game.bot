@@ -1,5 +1,5 @@
-pytelegrambotapi
-requests
-psycopg2-binary
-cachetools
-redis
+pytelegrambotapi==4.16.0
+flask==3.0.0
+gunicorn==21.2.0
+psycopg2-binary==2.9.9
+redis==5.0.1
