@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NYXARA GAME</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Анимированный фон -->
+        <div class="glow-bg"></div>
+        
+        <!-- Шапка -->
+        <div class="header">
+            <div class="logo">
+                <span class="logo-icon">🎮</span>
+                <span class="logo-text">NYXARA</span>
+                <span class="logo-glow">GAME</span>
+            </div>
+            <div class="balance-card">
+                <span class="balance-label">💰 БАЛАНС</span>
+                <span class="balance-value" id="balance">0</span>
+            </div>
+        </div>
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="games">
+                <span class="tab-icon">🎲</span>
+                <span>ИГРЫ</span>
+            </button>
+            <button class="tab-btn" data-tab="clans">
+                <span class="tab-icon">👥</span>
+                <span>КЛАНЫ</span>
+            </button>
+            <button class="tab-btn" data-tab="profile">
+                <span class="tab-icon">👤</span>
+                <span>ПРОФИЛЬ</span>
+            </button>
+        </div>
+
+        <!-- Вкладка ИГРЫ -->
+        <div id="games-tab" class="tab-content active">
+            <div class="section-title">
+                <span class="title-accent">✦</span> АРКАДА <span class="title-accent">✦</span>
+            </div>
+            <div class="games-grid">
+                <div class="game-card" onclick="showGameModal('dice1')">
+                    <div class="game-icon">🎲</div>
+                    <div class="game-name">1 КУБИК</div>
+                    <div class="game-bet">ставка 1💰</div>
+                    <div class="game-hover">▶ ИГРАТЬ</div>
+                </div>
+                <div class="game-card" onclick="showGameModal('dice2')">
+                    <div class="game-icon">🎲🎲</div>
+                    <div class="game-name">2 КУБИКА</div>
+                    <div class="game-bet">ставка 1💰</div>
+                    <div class="game-hover">▶ ИГРАТЬ</div>
+                </div>
+                <div class="game-card" onclick="showGameModal('rps')">
+                    <div class="game-icon">✂️</div>
+                    <div class="game-name">К-НОЖ-БУМАГА</div>
+                    <div class="game-bet">ставка 1💰</div>
+                    <div class="game-hover">▶ ИГРАТЬ</div>
+                </div>
+                <div class="game-card" onclick="showGameModal('slots')">
+                    <div class="game-icon">🎰</div>
+                    <div class="game-name">СЛОТЫ</div>
+                    <div class="game-bet">ставка 1💰</div>
+                    <div class="game-hover">▶ ИГРАТЬ</div>
+                </div>
+                <div class="game-card" onclick="showGameModal('guess')">
+                    <div class="game-icon">🔢</div>
+                    <div class="game-name">УГАДАЙ ЧИСЛО</div>
+                    <div class="game-bet">ставка 1💰</div>
+                    <div class="game-hover">▶ ИГРАТЬ</div>
+                </div>
+                <div class="game-card" onclick="showGameModal('evenodd')">
+                    <div class="game-icon">🎲</div>
+                    <div class="game-name">ЧЁТ/НЕЧЁТ</div>
+                    <div class="game-bet">ставка 1💰</div>
+                    <div class="game-hover">▶ ИГРАТЬ</div>
+                </div>
+            </div>
+            <div id="game-result" class="game-result"></div>
+        </div>
+
+        <!-- Вкладка КЛАНЫ -->
+        <div id="clans-tab" class="tab-content">
+            <div class="section-title">
+                <span class="title-accent">✦</span> ГИЛЬДИЯ <span class="title-accent">✦</span>
+            </div>
+            <div id="clan-info" class="clan-card">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">ЗАГРУЗКА...</div>
+            </div>
+            <div class="clan-buttons">
+                <button class="btn btn-neon" onclick="showCreateClan()">
+                    <span>📋</span> СОЗДАТЬ КЛАН
+                </button>
+                <button class="btn btn-neon" onclick="showJoinClan()">
+                    <span>🔍</span> ВСТУПИТЬ В КЛАН
+                </button>
+                <button class="btn btn-danger" onclick="leaveClan()">
+                    <span>🚪</span> ПОКИНУТЬ КЛАН
+                </button>
+            </div>
+        </div>
+
+        <!-- Вкладка ПРОФИЛЬ -->
+        <div id="profile-tab" class="tab-content">
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    <div class="avatar-glow"></div>
+                    <div class="avatar-icon">👾</div>
+                </div>
+                <div class="profile-name" id="username">NYXARA</div>
+                <div class="profile-stats">
+                    <div class="stat-box">
+                        <div class="stat-value" id="games">0</div>
+                        <div class="stat-label">ИГР</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="wins">0</div>
+                        <div class="stat-label">ПОБЕД</div>
+                    </div>
+                </div>
+                <button class="btn btn-gold" onclick="getBonus()">
+                    <span>🎁</span> ЕЖЕДНЕВНЫЙ БОНУС
+                </button>
+                <button class="btn btn-neon" onclick="getReferral()">
+                    <span>👥</span> РЕФЕРАЛЬНАЯ ССЫЛКА
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для игр -->
+    <div id="game-modal" class="modal">
+        <div class="modal-content game-modal">
+            <div class="modal-header">
+                <span class="modal-title" id="modal-title">ИГРА</span>
+                <span class="close" onclick="closeGameModal()">&times;</span>
+            </div>
+            <div id="game-modal-body" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для рефералов -->
+    <div id="referral-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">👥 РЕФЕРАЛЬНАЯ ССЫЛКА</span>
+                <span class="close" onclick="closeReferralModal()">&times;</span>
+            </div>
+            <div id="referral-body" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Уведомления -->
+    <div id="toast" class="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
