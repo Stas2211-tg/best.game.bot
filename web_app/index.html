@@ -2,74 +2,96 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>NYXARA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>НИКСАР · Мистические врата</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="app">
-        <div class="header">
-            <div class="logo">⚡ NYXARA</div>
-            <div class="balance">💰 <span id="balance">0</span></div>
+    <div class="cosmic-void"></div>
+    <div class="star-dust"></div>
+
+    <div class="game-universe">
+        <!-- Шапка -->
+        <header class="ethereal-header">
+            <div class="rune-title">
+                <span class="rune">◈</span>
+                <h1>НИКСАР</h1>
+                <span class="rune">◈</span>
+            </div>
+            <div class="soul-balance">
+                <span class="balance-name">ЭФИР</span>
+                <span class="balance-number" id="balance">0</span>
+                <span class="balance-sigil">⚡</span>
+            </div>
+        </header>
+
+        <!-- Навигация -->
+        <nav class="mystic-nav">
+            <button class="nav-tab active" data-tab="games">🎲 ИГРЫ</button>
+            <button class="nav-tab" data-tab="pets">🐉 ПИТОМЦЫ</button>
+            <button class="nav-tab" data-tab="alliances">🏛️ АЛЬЯНСЫ</button>
+            <button class="nav-tab" data-tab="profile">👤 ХРАМ</button>
+        </nav>
+
+        <!-- Вкладка ИГРЫ -->
+        <div id="games" class="dimension active">
+            <div class="games-crystal">
+                <!-- 15 игр (кратко) -->
+                <div class="game-card" data-game="dice1">🎲 Грань Судьбы</div>
+                <div class="game-card" data-game="dice2">🎲🎲 Двойной Рок</div>
+                <div class="game-card" data-game="rps">⚔️ Дуэль</div>
+                <div class="game-card" data-game="slots">🎰 Зов Волн</div>
+                <div class="game-card" data-game="guess">🔮 Оракул</div>
+                <div class="game-card" data-game="coinflip">🪙 Монета</div>
+                <div class="game-card" data-game="higher">📈 Выше/Ниже</div>
+                <div class="game-card" data-game="lucky7">7️⃣ Счастливый 7</div>
+            </div>
+            <div id="oracle-response" class="oracle-glow"></div>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" data-tab="games">🎮 ИГРЫ</button>
-            <button class="tab" data-tab="profile">👤 ПРОФИЛЬ</button>
+        <!-- Вкладка ПИТОМЦЫ (магазин + мои питомцы) -->
+        <div id="pets" class="dimension">
+            <div class="pet-market">
+                <h3>✦ ЗОВ ДУШ ✦</h3>
+                <div id="shopPets" class="pet-grid"></div>
+                <h3>✦ ТВОИ СПУТНИКИ ✦</h3>
+                <div id="myPets" class="pet-grid"></div>
+            </div>
         </div>
 
-        <div id="games" class="tab-content active">
-            <div class="game-list">
-                <div class="game-card" onclick="gameDice1()">
-                    <div class="game-icon">🎲</div>
-                    <div class="game-name">1 кубик</div>
-                    <div class="game-cost">1💰</div>
-                </div>
-                <div class="game-card" onclick="gameDice2()">
-                    <div class="game-icon">🎲🎲</div>
-                    <div class="game-name">2 кубика</div>
-                    <div class="game-cost">1💰</div>
-                </div>
-                <div class="game-card" onclick="gameRPS()">
-                    <div class="game-icon">✂️</div>
-                    <div class="game-name">КНБ</div>
-                    <div class="game-cost">1💰</div>
-                </div>
-                <div class="game-card" onclick="gameSlots()">
-                    <div class="game-icon">🎰</div>
-                    <div class="game-name">Слоты</div>
-                    <div class="game-cost">1💰</div>
-                </div>
-                <div class="game-card" onclick="gameGuess()">
-                    <div class="game-icon">🔢</div>
-                    <div class="game-name">Угадай число</div>
-                    <div class="game-cost">1💰</div>
+        <!-- Вкладка АЛЬЯНСЫ -->
+        <div id="alliances" class="dimension">
+            <div class="alliance-temple">
+                <div id="alliancePanel"></div>
+                <div class="alliance-leaderboard">
+                    <h3>🏆 ТОП АЛЬЯНСОВ</h3>
+                    <div id="topAlliances"></div>
                 </div>
             </div>
-            <div id="result" class="result"></div>
         </div>
 
-        <div id="profile" class="tab-content">
-            <div class="profile-card">
-                <div class="avatar">👤</div>
-                <div class="username" id="username">Игрок</div>
-                <div class="stats">
-                    <div>🎮 <span id="gamesCount">0</span></div>
-                    <div>🏆 <span id="winsCount">0</span></div>
+        <!-- Вкладка ПРОФИЛЬ -->
+        <div id="profile" class="dimension">
+            <div class="profile-sanctum">
+                <div class="astral-id">◈ <span id="username">СТРАННИК</span> ◈</div>
+                <div class="stat-runes">
+                    <div>🎮 <span id="gamesCount">0</span> игр</div>
+                    <div>🏆 <span id="winsCount">0</span> побед</div>
                 </div>
-                <button class="bonus-btn" onclick="getBonus()">🎁 БОНУС</button>
+                <button id="bonusBtn" class="ritual-button">✦ ПОЛУЧИТЬ ДАР ✦</button>
             </div>
         </div>
     </div>
 
-    <div id="modal" class="modal">
-        <div class="modal-content">
+    <!-- Модалка для игр -->
+    <div id="gameModal" class="astral-modal">
+        <div class="modal-crystal">
             <div class="modal-header">
                 <span id="modalTitle">ИГРА</span>
-                <span class="close" onclick="closeModal()">✕</span>
+                <span class="modal-close">✕</span>
             </div>
-            <div id="modalBody"></div>
+            <div id="modalBody" class="modal-body"></div>
         </div>
     </div>
 
