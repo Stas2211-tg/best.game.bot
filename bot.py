@@ -11,7 +11,7 @@ DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "localhost:5000")
 WEBAPP_URL = f"https://{DOMAIN}/web_app/index.html"
 
 bot = telebot.TeleBot(TOKEN)
-flask_app = Flask(__name__, static_folder='.', static_url_path='')
+flask_app = Flask(__name__, static_folder='web_app', static_url_path='')
 
 # Хранилище пользователей (в памяти)
 users = {}
