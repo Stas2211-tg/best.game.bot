@@ -11,13 +11,13 @@ TOKEN = os.getenv("TOKEN")
 DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "localhost:5000")
 WEBAPP_URL = f"https://{DOMAIN}/web_app/index.html"
 
-# Твой стикер (можно переопределить через переменную STICKER_ID в Railway)
+# Стикер (можно переопределить через переменную STICKER_ID в Railway)
 STICKER_ID = os.getenv("STICKER_ID", "CAACAgIAAxkBAzduQ2ovzWJadhZVoJLyksJ-VQ3mtq4SAAKBAAOvxlEaMSggg-9RCfo8BA")
 
 bot = telebot.TeleBot(TOKEN)
 flask_app = Flask(__name__, static_folder='web_app', static_url_path='')
 
-# Данные пользователей
+# База данных в памяти
 users = {}
 alliances = {}
 next_alliance_id = 1
@@ -53,7 +53,6 @@ def get_winrate(user):
     return round((wins / games) * 100, 1) if games > 0 else 0
 
 def send_notification(chat_id, user):
-    """Отправляет напоминание со статистикой (через 3 дня)"""
     winrate = get_winrate(user)
     text = f"""🌙 *Н И К С А Р* 🌙
 
@@ -76,9 +75,7 @@ def send_notification(chat_id, user):
     bot.send_message(chat_id, text, reply_markup=kb, parse_mode="Markdown")
 
 def send_welcome_with_sticker(chat_id, user, name):
-    """Отправляет стикер → удаляет через 2 секунды → приветствие"""
     winrate = get_winrate(user)
-    
     text = f"""◈ *Н И К С А Р* ◈
 
 «Ты снова здесь, {name}.  
@@ -91,7 +88,6 @@ def send_welcome_with_sticker(chat_id, user, name):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("🌙 ВОЙТИ", web_app=WebAppInfo(url=WEBAPP_URL)))
     
-    # Отправляем стикер
     if STICKER_ID:
         try:
             sticker_msg = bot.send_sticker(chat_id, STICKER_ID)
@@ -100,7 +96,6 @@ def send_welcome_with_sticker(chat_id, user, name):
         except:
             pass
     
-    # Отправляем приветствие
     bot.send_message(chat_id, text, reply_markup=kb, parse_mode="Markdown")
 
 def collect_pet_income(user_id, pet_id):
@@ -164,16 +159,12 @@ def start(message):
         }
 
     user = users[uid]
-    
-    # Отправляем стикер, удаляем, потом приветствие
     send_welcome_with_sticker(message.chat.id, user, name)
-    
-    # Проверяем, нужно ли отправить напоминание (раз в 3 дня)
+
     now = datetime.now()
     last_notify = user.get("last_notify")
     
     if last_notify is None:
-        # Ставим метку, чтобы напоминание пришло через 3 дня
         user["last_notify"] = (now - timedelta(days=3)).isoformat()
     else:
         if now - datetime.fromisoformat(last_notify) >= timedelta(days=3):
@@ -195,11 +186,9 @@ def api():
         users[uid] = {"coins": 1000, "games": 0, "wins": 0, "pets": [], "alliance_id": None, "last_bonus": None, "last_notify": None}
     u = users[uid]
 
-    # Профиль
     if action == "profile":
         return jsonify({"coins": u["coins"], "games": u["games"], "wins": u["wins"]})
 
-    # Бонус (раз в 24 часа)
     elif action == "bonus":
         now = datetime.now()
         last = u.get("last_bonus")
@@ -209,7 +198,6 @@ def api():
         u["last_bonus"] = now.isoformat()
         return jsonify({"success": True, "coins": u["coins"], "message": "+100"})
 
-    # 1 кубик
     elif action == "dice1":
         if u["coins"] < 1:
             return jsonify({"error": "Нет эфира"})
@@ -224,7 +212,6 @@ def api():
             return jsonify({"win": True, "roll": roll, "coins": u["coins"], "message": f"+{win}"})
         return jsonify({"win": False, "roll": roll, "coins": u["coins"], "message": "-1"})
 
-    # 2 кубика
     elif action == "dice2":
         if u["coins"] < 1:
             return jsonify({"error": "Нет эфира"})
@@ -240,7 +227,6 @@ def api():
             return jsonify({"win": True, "dice": [d1, d2], "total": total, "coins": u["coins"], "message": f"+{win}"})
         return jsonify({"win": False, "dice": [d1, d2], "total": total, "coins": u["coins"], "message": "-1"})
 
-    # КНБ
     elif action == "rps":
         if u["coins"] < 1:
             return jsonify({"error": "Нет эфира"})
@@ -258,7 +244,6 @@ def api():
             return jsonify({"win": True, "bot": bot_choice, "coins": u["coins"], "message": f"+{win}"})
         return jsonify({"win": False, "bot": bot_choice, "coins": u["coins"], "message": "-1"})
 
-    # Слоты
     elif action == "slots":
         if u["coins"] < 1:
             return jsonify({"error": "Нет эфира"})
@@ -279,7 +264,6 @@ def api():
             return jsonify({"win": True, "reel": reel, "coins": u["coins"], "message": f"+{win}"})
         return jsonify({"win": False, "reel": reel, "coins": u["coins"], "message": "-1"})
 
-    # Угадай число
     elif action == "guess":
         if u["coins"] < 1:
             return jsonify({"error": "Нет эфира"})
@@ -294,7 +278,6 @@ def api():
             return jsonify({"win": True, "secret": secret, "coins": u["coins"], "message": f"+{win}"})
         return jsonify({"win": False, "secret": secret, "coins": u["coins"], "message": "-1"})
 
-    # Питомцы
     elif action == "get_pets":
         pets_data = []
         for p in PETS:
@@ -328,10 +311,8 @@ def api():
         ok, msg = feed_pet(uid, pet_id)
         return jsonify({"success": ok, "coins": u["coins"], "message": msg})
 
-    # Альянсы
     elif action == "alliance_info":
-        user_alliance = u.get("alliance_id")
-        return jsonify({"alliance_id": user_alliance, "top": get_alliance_leaderboard()})
+        return jsonify({"alliance_id": u.get("alliance_id"), "top": get_alliance_leaderboard()})
 
     elif action == "create_alliance":
         name = data.get("name")
