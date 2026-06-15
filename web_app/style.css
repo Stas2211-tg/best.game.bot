@@ -6,110 +6,99 @@
 }
 
 body {
-    background: #03020a;
-    font-family: 'Segoe UI', 'Courier New', monospace;
-    color: #eef5ff;
+    background: #0a080f;
+    font-family: 'Courier New', 'Segoe UI', monospace;
+    color: #ddd9e6;
     min-height: 100vh;
-    overflow-x: hidden;
 }
 
-.cosmic-void {
+.mist {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(ellipse at 30% 40%, #0c0b1a, #010005);
+    background: radial-gradient(circle at 40% 30%, #1e1a2a, #050308);
     z-index: -2;
 }
 
-.star-dust {
+.dark-veil {
     position: fixed;
     width: 100%;
     height: 100%;
-    background-image: radial-gradient(2px 2px at 15% 30%, #fff, rgba(0,0,0,0)),
-                      radial-gradient(1px 1px at 70% 80%, #fff, rgba(0,0,0,0));
+    background-image: radial-gradient(2px 2px at 15% 25%, rgba(180, 160, 220, 0.15), transparent),
+                      radial-gradient(1px 1px at 70% 80%, rgba(150, 130, 200, 0.1), transparent);
     background-repeat: no-repeat;
-    background-size: 300px 300px, 200px 200px;
-    opacity: 0.25;
+    background-size: 400px 400px, 300px 300px;
+    opacity: 0.4;
     pointer-events: none;
-    animation: starMove 60s linear infinite;
+    animation: drift 50s linear infinite;
     z-index: -1;
 }
 
-@keyframes starMove {
+@keyframes drift {
     0% { background-position: 0% 0%, 0% 0%; }
     100% { background-position: 100% 100%, 80% 60%; }
 }
 
-.game-universe {
-    max-width: 550px;
+.nyxara-container {
+    max-width: 520px;
     margin: 0 auto;
     padding: 20px 18px 40px;
     position: relative;
     z-index: 2;
 }
 
-.ethereal-header {
+.rune-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 28px;
-    border-bottom: 1px solid rgba(100, 150, 255, 0.4);
+    margin-bottom: 30px;
+    border-bottom: 1px solid #2e2a3a;
     padding-bottom: 12px;
 }
 
-.rune-title {
-    display: flex;
-    gap: 8px;
-    align-items: baseline;
+.sigil {
+    font-size: 1.3rem;
+    letter-spacing: 4px;
+    color: #b8aee0;
+    text-shadow: 0 0 3px #2a2540;
 }
 
-.rune-title h1 {
-    font-size: 1.7rem;
-    letter-spacing: 6px;
-    background: linear-gradient(135deg, #e0e7ff, #9bb3ff);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    text-shadow: 0 0 5px #5f7fff;
+.ether-balance {
+    background: #120e1c;
+    padding: 5px 16px;
+    border-radius: 40px;
+    border: 1px solid #3a3350;
 }
 
-.rune {
-    font-size: 1.5rem;
-    color: #7c93ff;
+.ether-label {
+    font-size: 0.7rem;
+    color: #8e81b0;
+    margin-right: 8px;
 }
 
-.soul-balance {
-    background: rgba(10, 20, 40, 0.7);
-    backdrop-filter: blur(10px);
-    padding: 5px 18px;
-    border-radius: 60px;
-    border: 1px solid #5f7fff;
-}
-
-.balance-number {
-    font-size: 1.6rem;
+.ether-value {
+    font-size: 1.4rem;
     font-weight: bold;
-    color: #f0f5ff;
+    color: #cfc5f0;
 }
 
-.mystic-nav {
+.mystic-tabs {
     display: flex;
     gap: 6px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(12px);
+    background: #0c0914;
     border-radius: 60px;
     padding: 6px;
     margin-bottom: 28px;
-    border: 1px solid #2c3f66;
+    border: 1px solid #2e2a3a;
 }
 
-.nav-tab {
+.tab-btn {
     flex: 1;
     background: none;
     border: none;
-    color: #bbccff;
+    color: #8e81b0;
     padding: 10px 0;
     border-radius: 40px;
     font-weight: bold;
@@ -119,98 +108,213 @@ body {
     transition: 0.2s;
 }
 
-.nav-tab.active {
-    background: rgba(80, 130, 255, 0.3);
-    color: white;
-    box-shadow: 0 0 8px #3f6eff;
+.tab-btn.active {
+    background: #1e1930;
+    color: #e0d6ff;
+    box-shadow: 0 0 6px #3a3350;
 }
 
-.dimension {
+.tab-pane {
     display: none;
-    animation: fadeIn 0.3s;
+    animation: fade 0.3s;
 }
 
-.dimension.active {
+.tab-pane.active {
     display: block;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px);}
-    to { opacity: 1; transform: translateY(0);}
+@keyframes fade {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.games-crystal {
+.games-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 14px;
     margin-bottom: 20px;
 }
 
-.game-card {
-    background: rgba(6, 10, 25, 0.8);
-    backdrop-filter: blur(6px);
-    border: 1px solid #2c3f66;
+.game-rune {
+    background: #0f0c18;
+    border: 1px solid #2e2a3a;
     border-radius: 28px;
-    padding: 18px 8px;
+    padding: 20px 8px;
     text-align: center;
     cursor: pointer;
     transition: 0.2s;
+    color: #cbc3e6;
 }
 
-.game-card:hover {
-    border-color: #9bb3ff;
-    background: rgba(20, 40, 70, 0.9);
+.game-rune:hover {
+    border-color: #6a5a8a;
+    background: #18132a;
     transform: scale(0.97);
 }
 
-.oracle-glow {
-    background: rgba(0, 0, 0, 0.5);
-    border-left: 3px solid #7c93ff;
+.oracle-whisper {
+    background: #0b0813cc;
+    border-left: 3px solid #6a5a8a;
     padding: 14px;
     border-radius: 20px;
-    font-size: 0.8rem;
     text-align: center;
+    font-size: 0.8rem;
 }
 
-.pet-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin: 16px 0;
+.pets-section h3 {
+    font-size: 1rem;
+    margin: 20px 0 12px;
+    color: #b8aee0;
+    letter-spacing: 2px;
 }
 
 .pet-card {
-    background: #0e1122;
+    background: #0f0c18;
+    border: 1px solid #2e2a3a;
     border-radius: 24px;
     padding: 12px;
-    text-align: center;
-    border: 1px solid #3b4a77;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.modal-crystal {
-    background: #0a0d1c;
-    border: 1px solid #7c93ff;
+.pet-name {
+    font-weight: bold;
+    color: #cfc5f0;
+}
+
+.pet-level {
+    font-size: 0.7rem;
+    color: #8e81b0;
+}
+
+.pet-btn {
+    background: #1e1930;
+    border: 1px solid #4a3e68;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    color: #e0d6ff;
+}
+
+.alliance-card {
+    background: #0f0c18;
+    border: 1px solid #2e2a3a;
+    border-radius: 24px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.alliance-top {
+    margin-top: 20px;
+    background: #0b0813cc;
+    border-radius: 24px;
+    padding: 16px;
+}
+
+.profile-shrine {
+    background: #0f0c18;
+    border-radius: 36px;
+    padding: 28px 20px;
+    text-align: center;
+    border: 1px solid #2e2a3a;
+}
+
+.avatar-rune {
+    font-size: 1.4rem;
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+    color: #b8aee0;
+}
+
+.stats-runes {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin: 20px 0;
+}
+
+.stats-runes div {
+    text-align: center;
+    color: #8e81b0;
+}
+
+.stats-runes span {
+    font-size: 1.6rem;
+    font-weight: bold;
+    display: block;
+    color: #cfc5f0;
+}
+
+.ritual-button {
+    background: #1e1930;
+    border: 1px solid #4a3e68;
+    padding: 12px;
+    border-radius: 60px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #e0d6ff;
+    width: 100%;
+    letter-spacing: 1px;
+}
+
+.modal-veil {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(5, 3, 10, 0.96);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-rune {
+    background: #0c0914;
+    border: 1px solid #4a3e68;
     border-radius: 36px;
     width: 90%;
     max-width: 360px;
-    margin: auto;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid #2c3f66;
+    border-bottom: 1px solid #2e2a3a;
+    color: #b8aee0;
 }
 
-.ritual-button {
-    background: #16203f;
-    border: 1px solid #6a85b5;
-    padding: 12px;
-    border-radius: 60px;
-    font-weight: bold;
+.modal-close {
     cursor: pointer;
-    color: white;
+    font-size: 1.4rem;
+    color: #8e81b0;
+}
+
+.modal-body {
+    padding: 20px;
+    text-align: center;
+}
+
+.dice-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.dice-btn {
+    background: #120e1c;
+    border: 1px solid #3a3350;
+    padding: 14px;
+    border-radius: 28px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #cfc5f0;
 }
 
 .toast-mystic {
@@ -218,13 +322,20 @@ body {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: #020617dd;
-    backdrop-filter: blur(16px);
-    border: 1px solid #7c93ff;
+    background: #0b0813dd;
+    backdrop-filter: blur(12px);
+    border: 1px solid #6a5a8a;
     padding: 8px 22px;
     border-radius: 60px;
     z-index: 1100;
     font-weight: bold;
     letter-spacing: 1px;
-    animation: fadeUp 0.2s;
+    font-size: 0.8rem;
+    color: #e0d6ff;
+    animation: whisperFade 0.3s;
+}
+
+@keyframes whisperFade {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
 }
