@@ -2,78 +2,114 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>НИКСАР · Врата эфира</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>NYXARA — Эфирные врата</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="mist"></div>
-    <div class="dark-veil"></div>
+    <div class="app-container">
+        <!-- Магический фон -->
+        <div class="bg-void"></div>
+        <div class="bg-stars"></div>
+        <div class="bg-mist"></div>
 
-    <div class="nyxara-container">
-        <header class="rune-header">
-            <div class="sigil">◈ НИКСАР ◈</div>
-            <div class="ether-balance">
+        <!-- ШАПКА С ЛОГОТИПОМ (кликабельно) -->
+        <header class="nyxara-header">
+            <div class="logo-area" id="logoHome">
+                <i class="fas fa-skull"></i>
+                <span class="logo-text">NYXARA</span>
+                <i class="fas fa-dragon"></i>
+            </div>
+            <div class="ether-panel">
                 <span class="ether-label">эфир</span>
                 <span class="ether-value" id="balance">0</span>
+                <i class="fas fa-crystal"></i>
             </div>
         </header>
 
-        <nav class="mystic-tabs">
-            <button class="tab-btn active" data-tab="games">🎲 игры</button>
-            <button class="tab-btn" data-tab="pets">🐉 спутники</button>
-            <button class="tab-btn" data-tab="alliances">🏛️ альянсы</button>
-            <button class="tab-btn" data-tab="profile">👤 храм</button>
+        <!-- МЕНЮ НАВИГАЦИИ -->
+        <nav class="runic-menu">
+            <button class="menu-btn active" data-tab="games"><i class="fas fa-dice-d6"></i> игры</button>
+            <button class="menu-btn" data-tab="pets"><i class="fas fa-paw"></i> питомцы</button>
+            <button class="menu-btn" data-tab="alliances"><i class="fas fa-shield-alt"></i> альянсы</button>
+            <button class="menu-btn" data-tab="profile"><i class="fas fa-user-astronaut"></i> храм</button>
         </nav>
 
+        <!-- ВКЛАДКА: ИГРЫ -->
         <div id="games" class="tab-pane active">
             <div class="games-grid">
-                <div class="game-rune" data-game="dice1">🎲 грань судьбы</div>
-                <div class="game-rune" data-game="dice2">🎲🎲 двойной рок</div>
-                <div class="game-rune" data-game="rps">⚔️ дуэль</div>
-                <div class="game-rune" data-game="slots">🎰 зов волн</div>
-                <div class="game-rune" data-game="guess">🔮 оракул</div>
+                <div class="game-card" data-game="dice1">
+                    <i class="fas fa-dice-one"></i>
+                    <h3>Грань Судьбы</h3>
+                    <p>1 кубик</p>
+                </div>
+                <div class="game-card" data-game="dice2">
+                    <i class="fas fa-dice-two"></i>
+                    <h3>Двойной Рок</h3>
+                    <p>2 кубика</p>
+                </div>
+                <div class="game-card" data-game="rps">
+                    <i class="fas fa-hand-peace"></i>
+                    <h3>Дуэль</h3>
+                    <p>КНБ</p>
+                </div>
+                <div class="game-card" data-game="slots">
+                    <i class="fas fa-gamepad"></i>
+                    <h3>Зов Волн</h3>
+                    <p>слоты</p>
+                </div>
+                <div class="game-card" data-game="guess">
+                    <i class="fas fa-eye"></i>
+                    <h3>Оракул</h3>
+                    <p>угадай число</p>
+                </div>
             </div>
-            <div id="oracle" class="oracle-whisper"></div>
+            <div id="gameResult" class="oracle-container"></div>
         </div>
 
+        <!-- ВКЛАДКА: ПИТОМЦЫ -->
         <div id="pets" class="tab-pane">
-            <div class="pets-section">
-                <h3>✦ твои спутники ✦</h3>
+            <div class="pets-world">
+                <div class="section-title"><i class="fas fa-heart"></i> твои спутники</div>
                 <div id="myPets"></div>
-                <h3>✦ лавка душ ✦</h3>
+                <div class="section-title"><i class="fas fa-store"></i> лавка душ</div>
                 <div id="shopPets"></div>
             </div>
         </div>
 
+        <!-- ВКЛАДКА: АЛЬЯНСЫ -->
         <div id="alliances" class="tab-pane">
             <div id="alliancePanel"></div>
-            <div class="alliance-top">
-                <h3>🏆 топ альянсов</h3>
+            <div class="alliance-rank">
+                <div class="section-title"><i class="fas fa-trophy"></i> топ альянсов</div>
                 <div id="topAlliances"></div>
             </div>
         </div>
 
+        <!-- ВКЛАДКА: ПРОФИЛЬ -->
         <div id="profile" class="tab-pane">
-            <div class="profile-shrine">
-                <div class="avatar-rune">◈ <span id="username">странник</span> ◈</div>
-                <div class="stats-runes">
-                    <div>🎮 <span id="gamesCount">0</span> игр</div>
-                    <div>🏆 <span id="winsCount">0</span> побед</div>
+            <div class="profile-sanctum">
+                <div class="profile-icon"><i class="fas fa-user-circle"></i></div>
+                <div class="profile-name" id="username">странник</div>
+                <div class="profile-stats">
+                    <div><i class="fas fa-gamepad"></i> <span id="gamesCount">0</span> игр</div>
+                    <div><i class="fas fa-trophy"></i> <span id="winsCount">0</span> побед</div>
                 </div>
-                <button id="bonusBtn" class="ritual-button">✦ получить дар ✦</button>
+                <button id="bonusBtn" class="ritual-btn"><i class="fas fa-gift"></i> получить дар</button>
             </div>
         </div>
     </div>
 
-    <div id="gameModal" class="modal-veil">
-        <div class="modal-rune">
+    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ИГР -->
+    <div id="gameModal" class="modal-shadow">
+        <div class="modal-crystal">
             <div class="modal-header">
-                <span id="modalTitle">игра</span>
-                <span class="modal-close">✕</span>
+                <span id="modalTitle"><i class="fas fa-dice"></i> игра</span>
+                <button class="modal-closer"><i class="fas fa-times"></i></button>
             </div>
-            <div id="modalBody"></div>
+            <div id="modalBody" class="modal-inner"></div>
         </div>
     </div>
 
