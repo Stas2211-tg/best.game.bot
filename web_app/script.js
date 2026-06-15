@@ -5,7 +5,7 @@ tg.expand();
 let modal = document.getElementById("gameModal");
 let modalTitle = document.getElementById("modalTitle");
 let modalBody = document.getElementById("modalBody");
-let oracleDiv = document.getElementById("oracle");
+let resultDiv = document.getElementById("gameResult");
 
 async function apiCall(action, data = {}) {
     data.user_id = user.id;
@@ -19,7 +19,7 @@ async function apiCall(action, data = {}) {
         return await res.json();
     } catch(e) {
         console.error(e);
-        return { error: "Тишина в эфире" };
+        return { error: "тишина в эфире" };
     }
 }
 
@@ -27,19 +27,20 @@ function showToast(msg, isWin = null) {
     let toast = document.createElement("div");
     toast.className = "toast-mystic";
     if (isWin === true) toast.style.borderColor = "#b8aee0";
-    if (isWin === false) toast.style.borderColor = "#5a4a6a";
-    toast.innerText = msg;
+    if (isWin === false) toast.style.borderColor = "#6a5a8a";
+    toast.innerHTML = `<i class="fas ${isWin === true ? 'fa-crown' : 'fa-skull'}"></i> ${msg}`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2600);
 }
 
 function setOracle(text, isWin = null) {
-    if (oracleDiv) {
-        oracleDiv.innerHTML = `✦ ${text} ✦`;
-        if (isWin === true) oracleDiv.style.borderLeftColor = "#b8aee0";
-        if (isWin === false) oracleDiv.style.borderLeftColor = "#5a4a6a";
+    if (resultDiv) {
+        resultDiv.innerHTML = `<i class="fas ${isWin === true ? 'fa-star' : 'fa-moon'}"></i> ${text}`;
+        if (isWin === true) resultDiv.style.borderLeftColor = "#b8aee0";
+        if (isWin === false) resultDiv.style.borderLeftColor = "#6a5a8a";
         setTimeout(() => {
-            if (oracleDiv.innerHTML === `✦ ${text} ✦`) oracleDiv.innerHTML = "";
+            if (resultDiv.innerHTML === `<i class="fas ${isWin === true ? 'fa-star' : 'fa-moon'}"></i> ${text}`)
+                resultDiv.innerHTML = "";
         }, 2800);
     }
 }
@@ -66,7 +67,7 @@ document.getElementById("bonusBtn")?.addEventListener("click", async () => {
 });
 
 function openModal(title, html) {
-    modalTitle.innerText = title;
+    modalTitle.innerHTML = `<i class="fas fa-dice"></i> ${title}`;
     modalBody.innerHTML = html;
     modal.style.display = "flex";
 }
@@ -74,7 +75,7 @@ function openModal(title, html) {
 function closeModal() {
     modal.style.display = "none";
 }
-document.querySelectorAll(".modal-close").forEach(btn => btn.addEventListener("click", closeModal));
+document.querySelectorAll(".modal-closer").forEach(btn => btn.addEventListener("click", closeModal));
 window.onclick = e => { if (e.target === modal) closeModal(); };
 
 function gameDice1() {
@@ -113,9 +114,9 @@ function gameDice2() {
 
 function gameRPS() {
     openModal("дуэль", `<div style="display:flex; gap:12px; justify-content:center;">
-        <button class="dice-btn" data-choice="камень">🪨 камень</button>
-        <button class="dice-btn" data-choice="ножницы">✂️ ножницы</button>
-        <button class="dice-btn" data-choice="бумага">📄 бумага</button>
+        <button class="dice-btn" data-choice="камень"><i class="fas fa-hand-rock"></i> камень</button>
+        <button class="dice-btn" data-choice="ножницы"><i class="fas fa-hand-peace"></i> ножницы</button>
+        <button class="dice-btn" data-choice="бумага"><i class="fas fa-hand-paper"></i> бумага</button>
     </div>`);
     document.querySelectorAll("#modalBody .dice-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
@@ -132,7 +133,7 @@ function gameRPS() {
 }
 
 function gameSlots() {
-    openModal("зов волн", `<button id="slotBtn" class="dice-btn" style="width:100%">🎰 крутить (1 эфир)</button>`);
+    openModal("зов волн", `<button id="slotBtn" class="dice-btn" style="width:100%"><i class="fas fa-gamepad"></i> крутить (1 эфир)</button>`);
     document.getElementById("slotBtn")?.addEventListener("click", async () => {
         let res = await apiCall("slots");
         await refreshProfile();
@@ -160,7 +161,7 @@ function gameGuess() {
     });
 }
 
-document.querySelectorAll(".game-rune").forEach(card => {
+document.querySelectorAll(".game-card").forEach(card => {
     card.addEventListener("click", () => {
         let game = card.dataset.game;
         if (game === "dice1") gameDice1();
@@ -169,6 +170,14 @@ document.querySelectorAll(".game-rune").forEach(card => {
         if (game === "slots") gameSlots();
         if (game === "guess") gameGuess();
     });
+});
+
+// Возврат на главную по клику на логотип
+document.getElementById("logoHome")?.addEventListener("click", () => {
+    document.querySelectorAll(".menu-btn").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll(".tab-pane").forEach(pane => pane.classList.remove("active"));
+    document.querySelector(".menu-btn[data-tab='games']").classList.add("active");
+    document.getElementById("games").classList.add("active");
 });
 
 // Питомцы
@@ -182,15 +191,14 @@ async function loadPets() {
     for (let p of data.pets) {
         if (p.owned) {
             myDiv.innerHTML += `<div class="pet-card">
-                <div><span class="pet-name">${p.emoji} ${p.name}</span> <span class="pet-level">ур. ${p.level}</span></div>
-                <div><button class="pet-btn" data-feed="${p.id}">🍖 кормить</button>
-                <button class="pet-btn" data-collect="${p.id}">💾 собрать</button></div>
+                <div class="pet-info"><i class="fas fa-dragon"></i><div><div class="pet-name">${p.emoji} ${p.name}</div><div class="pet-level">ур. ${p.level}</div></div></div>
+                <div class="pet-actions"><button class="pet-btn" data-feed="${p.id}"><i class="fas fa-apple-alt"></i> кормить</button>
+                <button class="pet-btn" data-collect="${p.id}"><i class="fas fa-coins"></i> собрать</button></div>
             </div>`;
         } else {
             shopDiv.innerHTML += `<div class="pet-card">
-                <div><span class="pet-name">${p.emoji} ${p.name}</span></div>
-                <div>💰 ${p.price}</div>
-                <div><button class="pet-btn" data-buy="${p.id}">призвать</button></div>
+                <div class="pet-info"><i class="fas fa-egg"></i><div><div class="pet-name">${p.emoji} ${p.name}</div></div></div>
+                <div class="pet-actions"><span class="pet-level">💰 ${p.price}</span><button class="pet-btn" data-buy="${p.id}">призвать</button></div>
             </div>`;
         }
     }
@@ -235,12 +243,12 @@ async function loadAlliances() {
     let topDiv = document.getElementById("topAlliances");
     if (!panel) return;
     panel.innerHTML = `<div class="alliance-card">
-        <div>🏛️ твой альянс: ${data.alliance_id || "нет"}</div>
-        <button id="createAllianceBtn" class="pet-btn">создать</button>
-        <button id="joinAllianceBtn" class="pet-btn">вступить</button>
+        <div><i class="fas fa-shield-alt"></i> твой альянс: ${data.alliance_id || "нет"}</div>
+        <button id="createAllianceBtn" class="pet-btn"><i class="fas fa-plus"></i> создать</button>
+        <button id="joinAllianceBtn" class="pet-btn"><i class="fas fa-sign-in-alt"></i> вступить</button>
     </div>`;
     if (topDiv && data.top) {
-        topDiv.innerHTML = data.top.map(t => `<div>🏛️ ${t[0]} — ${t[1]} эфира</div>`).join("");
+        topDiv.innerHTML = data.top.map(t => `<div><i class="fas fa-trophy"></i> ${t[0]} — ${t[1]} эфира</div>`).join("");
     }
     document.getElementById("createAllianceBtn")?.addEventListener("click", () => {
         let name = prompt("название альянса");
@@ -259,9 +267,9 @@ async function loadAlliances() {
     });
 }
 
-document.querySelectorAll(".tab-btn").forEach(btn => {
+document.querySelectorAll(".menu-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab-btn").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".menu-btn").forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
         btn.classList.add("active");
         let tab = btn.dataset.tab;
