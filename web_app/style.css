@@ -1,100 +1,139 @@
-* {
+{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    background: #0a080f;
-    font-family: 'Courier New', 'Segoe UI', monospace;
-    color: #ddd9e6;
+    font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+    background: #0a0815;
+    color: #e0ddf0;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
-.mist {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at 40% 30%, #1e1a2a, #050308);
-    z-index: -2;
-}
-
-.dark-veil {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    background-image: radial-gradient(2px 2px at 15% 25%, rgba(180, 160, 220, 0.15), transparent),
-                      radial-gradient(1px 1px at 70% 80%, rgba(150, 130, 200, 0.1), transparent);
-    background-repeat: no-repeat;
-    background-size: 400px 400px, 300px 300px;
-    opacity: 0.4;
-    pointer-events: none;
-    animation: drift 50s linear infinite;
-    z-index: -1;
-}
-
-@keyframes drift {
-    0% { background-position: 0% 0%, 0% 0%; }
-    100% { background-position: 100% 100%, 80% 60%; }
-}
-
-.nyxara-container {
-    max-width: 520px;
+.app-container {
+    max-width: 700px;
     margin: 0 auto;
     padding: 20px 18px 40px;
     position: relative;
     z-index: 2;
 }
 
-.rune-header {
+/* ФОНОВЫЕ ЭФФЕКТЫ */
+.bg-void {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 30% 20%, #1e1a30, #03010a);
+    z-index: -3;
+}
+
+.bg-stars {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(2px 2px at 15% 25%, rgba(200, 180, 255, 0.2), transparent),
+                      radial-gradient(1px 1px at 70% 80%, rgba(180, 150, 255, 0.15), transparent);
+    background-repeat: no-repeat;
+    background-size: 500px 500px, 300px 300px;
+    opacity: 0.6;
+    pointer-events: none;
+    animation: driftStars 45s linear infinite;
+    z-index: -2;
+}
+
+@keyframes driftStars {
+    0% { background-position: 0% 0%, 0% 0%; }
+    100% { background-position: 100% 100%, 80% 60%; }
+}
+
+.bg-mist {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 50%, rgba(80, 60, 130, 0.1), transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ШАПКА */
+.nyxara-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 30px;
-    border-bottom: 1px solid #2e2a3a;
+    margin-bottom: 28px;
     padding-bottom: 12px;
+    border-bottom: 1px solid #2e2940;
+    flex-wrap: wrap;
 }
 
-.sigil {
-    font-size: 1.3rem;
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.logo-area:hover {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+.logo-text {
+    font-size: 1.6rem;
+    font-weight: bold;
     letter-spacing: 4px;
-    color: #b8aee0;
-    text-shadow: 0 0 3px #2a2540;
+    background: linear-gradient(135deg, #cfc5f0, #9b8ec0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
-.ether-balance {
-    background: #120e1c;
-    padding: 5px 16px;
+.logo-area i {
+    font-size: 1.4rem;
+    color: #b8aee0;
+}
+
+.ether-panel {
+    background: #120e20;
+    padding: 6px 18px;
     border-radius: 40px;
     border: 1px solid #3a3350;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .ether-label {
     font-size: 0.7rem;
+    text-transform: uppercase;
     color: #8e81b0;
-    margin-right: 8px;
 }
 
 .ether-value {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: bold;
-    color: #cfc5f0;
+    color: #e0d6ff;
 }
 
-.mystic-tabs {
+/* МЕНЮ */
+.runic-menu {
     display: flex;
-    gap: 6px;
-    background: #0c0914;
+    gap: 8px;
+    background: #0c0a18;
     border-radius: 60px;
     padding: 6px;
     margin-bottom: 28px;
-    border: 1px solid #2e2a3a;
+    border: 1px solid #2e2940;
 }
 
-.tab-btn {
+.menu-btn {
     flex: 1;
     background: none;
     border: none;
@@ -102,86 +141,123 @@ body {
     padding: 10px 0;
     border-radius: 40px;
     font-weight: bold;
-    font-size: 0.75rem;
-    letter-spacing: 1px;
+    font-size: 0.8rem;
     cursor: pointer;
     transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
-.tab-btn.active {
-    background: #1e1930;
+.menu-btn i {
+    font-size: 1rem;
+}
+
+.menu-btn.active {
+    background: #1e1935;
     color: #e0d6ff;
-    box-shadow: 0 0 6px #3a3350;
+    box-shadow: 0 0 8px #3a3350;
 }
 
 .tab-pane {
     display: none;
-    animation: fade 0.3s;
+    animation: fadePane 0.3s ease;
 }
 
 .tab-pane.active {
     display: block;
 }
 
-@keyframes fade {
-    from { opacity: 0; transform: translateY(10px); }
+@keyframes fadePane {
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* ИГРЫ */
 .games-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-    margin-bottom: 20px;
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
-.game-rune {
-    background: #0f0c18;
-    border: 1px solid #2e2a3a;
+.game-card {
+    background: #0f0c1c;
+    border: 1px solid #2e2940;
     border-radius: 28px;
-    padding: 20px 8px;
+    padding: 22px 12px;
     text-align: center;
     cursor: pointer;
     transition: 0.2s;
-    color: #cbc3e6;
 }
 
-.game-rune:hover {
+.game-card:hover {
     border-color: #6a5a8a;
-    background: #18132a;
-    transform: scale(0.97);
+    background: #18132c;
+    transform: translateY(-3px);
 }
 
-.oracle-whisper {
-    background: #0b0813cc;
+.game-card i {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+    color: #b8aee0;
+}
+
+.game-card h3 {
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.game-card p {
+    font-size: 0.7rem;
+    color: #8e81b0;
+}
+
+.oracle-container {
+    background: #0a0818cc;
     border-left: 3px solid #6a5a8a;
     padding: 14px;
     border-radius: 20px;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
 }
 
-.pets-section h3 {
+/* ПИТОМЦЫ */
+.section-title {
     font-size: 1rem;
     margin: 20px 0 12px;
     color: #b8aee0;
-    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .pet-card {
-    background: #0f0c18;
-    border: 1px solid #2e2a3a;
+    background: #0f0c1c;
+    border: 1px solid #2e2940;
     border-radius: 24px;
-    padding: 12px;
-    margin-bottom: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+}
+
+.pet-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pet-info i {
+    font-size: 1.6rem;
+    color: #b8aee0;
 }
 
 .pet-name {
     font-weight: bold;
-    color: #cfc5f0;
 }
 
 .pet-level {
@@ -189,114 +265,130 @@ body {
     color: #8e81b0;
 }
 
+.pet-actions {
+    display: flex;
+    gap: 10px;
+}
+
 .pet-btn {
-    background: #1e1930;
+    background: #1e1935;
     border: 1px solid #4a3e68;
-    padding: 6px 12px;
-    border-radius: 20px;
+    padding: 6px 14px;
+    border-radius: 24px;
     cursor: pointer;
     font-size: 0.7rem;
-    color: #e0d6ff;
+    transition: 0.1s;
 }
 
+/* АЛЬЯНСЫ */
 .alliance-card {
-    background: #0f0c18;
-    border: 1px solid #2e2a3a;
+    background: #0f0c1c;
+    border: 1px solid #2e2940;
     border-radius: 24px;
-    padding: 16px;
-    margin-bottom: 16px;
+    padding: 18px;
+    margin-bottom: 20px;
 }
 
-.alliance-top {
-    margin-top: 20px;
-    background: #0b0813cc;
+.alliance-rank {
+    background: #0a0818cc;
     border-radius: 24px;
-    padding: 16px;
+    padding: 18px;
 }
 
-.profile-shrine {
-    background: #0f0c18;
+/* ПРОФИЛЬ */
+.profile-sanctum {
+    background: #0f0c1c;
     border-radius: 36px;
-    padding: 28px 20px;
+    padding: 32px 20px;
     text-align: center;
-    border: 1px solid #2e2a3a;
+    border: 1px solid #2e2940;
 }
 
-.avatar-rune {
-    font-size: 1.4rem;
-    margin-bottom: 16px;
-    letter-spacing: 2px;
+.profile-icon i {
+    font-size: 4rem;
     color: #b8aee0;
 }
 
-.stats-runes {
+.profile-name {
+    font-size: 1.4rem;
+    margin: 12px 0 16px;
+    letter-spacing: 2px;
+}
+
+.profile-stats {
     display: flex;
     justify-content: center;
     gap: 40px;
-    margin: 20px 0;
+    margin: 20px 0 24px;
 }
 
-.stats-runes div {
+.profile-stats div {
     text-align: center;
     color: #8e81b0;
 }
 
-.stats-runes span {
+.profile-stats span {
     font-size: 1.6rem;
     font-weight: bold;
     display: block;
-    color: #cfc5f0;
+    color: #e0d6ff;
 }
 
-.ritual-button {
-    background: #1e1930;
+.ritual-btn {
+    background: #1e1935;
     border: 1px solid #4a3e68;
     padding: 12px;
-    border-radius: 60px;
+    border-radius: 40px;
     font-weight: bold;
     cursor: pointer;
     color: #e0d6ff;
     width: 100%;
-    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-.modal-veil {
+/* МОДАЛЬНОЕ ОКНО */
+.modal-shadow {
     display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(5, 3, 10, 0.96);
+    background: rgba(5, 3, 12, 0.96);
+    backdrop-filter: blur(12px);
     align-items: center;
     justify-content: center;
     z-index: 1000;
 }
 
-.modal-rune {
-    background: #0c0914;
+.modal-crystal {
+    background: #0c0918;
     border: 1px solid #4a3e68;
-    border-radius: 36px;
+    border-radius: 40px;
     width: 90%;
-    max-width: 360px;
+    max-width: 380px;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid #2e2a3a;
-    color: #b8aee0;
+    padding: 18px 22px;
+    border-bottom: 1px solid #2e2940;
 }
 
-.modal-close {
-    cursor: pointer;
-    font-size: 1.4rem;
+.modal-closer {
+    background: none;
+    border: none;
     color: #8e81b0;
+    font-size: 1.2rem;
+    cursor: pointer;
 }
 
-.modal-body {
-    padding: 20px;
+.modal-inner {
+    padding: 22px;
     text-align: center;
 }
 
@@ -308,13 +400,12 @@ body {
 }
 
 .dice-btn {
-    background: #120e1c;
+    background: #120e1e;
     border: 1px solid #3a3350;
     padding: 14px;
     border-radius: 28px;
     font-size: 1.2rem;
     cursor: pointer;
-    color: #cfc5f0;
 }
 
 .toast-mystic {
@@ -322,20 +413,56 @@ body {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: #0b0813dd;
-    backdrop-filter: blur(12px);
+    background: #0b0818dd;
+    backdrop-filter: blur(16px);
     border: 1px solid #6a5a8a;
-    padding: 8px 22px;
+    padding: 10px 24px;
     border-radius: 60px;
     z-index: 1100;
     font-weight: bold;
-    letter-spacing: 1px;
-    font-size: 0.8rem;
-    color: #e0d6ff;
-    animation: whisperFade 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    animation: fadeUp 0.3s;
 }
 
-@keyframes whisperFade {
+@keyframes fadeUp {
     from { opacity: 0; transform: translate(-50%, 20px); }
     to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* АДАПТИВ */
+@media (max-width: 500px) {
+    .app-container {
+        padding: 16px 14px 30px;
+    }
+    
+    .logo-text {
+        font-size: 1.3rem;
+        letter-spacing: 2px;
+    }
+    
+    .menu-btn {
+        font-size: 0.65rem;
+    }
+    
+    .games-grid {
+        gap: 10px;
+    }
+    
+    .game-card {
+        padding: 16px 8px;
+    }
+    
+    .pet-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .pet-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }
